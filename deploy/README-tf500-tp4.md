@@ -1,6 +1,6 @@
 # tf500 XTier TP4 混合推理实例
 
-本目录只管理推理服务。启动台卡片与 API 代理由用户维护；TP8 基准卡片和原 `sglang-ds41.service` 保留。
+本目录管理推理服务及启动台的 TP4 卡片（`tf500_console.py`）。API 代理由用户维护；TP8 基准卡片和原 `sglang-ds41.service` 保留。
 
 ## 实例
 
