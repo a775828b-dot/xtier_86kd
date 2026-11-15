@@ -1,0 +1,79 @@
+{
+  "options": {
+    "port": 30000,
+    "host": "<TF500_IP>",
+    "model": "DeepSeek-V4.1-Flash-1017",
+    "api_key_file": "<API_KEY_FILE>",
+    "concurrencies": "1",
+    "rounds": 1,
+    "two_phase": true,
+    "shared_decode_prefix": true,
+    "output_tokens": 1024,
+    "prompt_tokens": 32768,
+    "corpus": "/data/bench/sglang-corpus.txt",
+    "tokenizer": "/data/models/DeepSeek-V4.1-Flash-1017",
+    "out": "/data/bench/serving-32k1k-86kd-static-c1-repeat.json"
+  },
+  "rounds": [
+    {
+      "summary": {
+        "concurrency": 1,
+        "round": 0,
+        "requests": 1,
+        "success": 1,
+        "errors": [],
+        "prefill_success": 1,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 32790,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 12425.17,
+        "p50_cold_ttft_s": 2.639,
+        "p95_cold_ttft_s": 2.639,
+        "input_tokens": 32793,
+        "output_tokens": 1024,
+        "decode_cached_tokens": 32512,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 273.24,
+        "decode_window_tps": 297.31,
+        "verify_steps": 298,
+        "accept_tokens_per_step_est": 3.436,
+        "mean_request_ms_per_step_est": 11.558,
+        "sum_request_decode_tps_est": 297.02,
+        "p50_ttft_s": 0.302,
+        "p95_ttft_s": 0.302,
+        "p50_tpot_ms": 3.367,
+        "p95_tpot_ms": 3.367
+      },
+      "requests": [
+        {
+          "ok": true,
+          "input_tokens": 32793,
+          "cached_tokens": 32512,
+          "output_tokens": 1024,
+          "verify_steps": 298,
+          "started": 13282.651902649,
+          "first": 13282.954334975,
+          "last": 13286.398495017,
+          "finished": 13286.399470945,
+          "ttft_s": 0.30243232599968906,
+          "tpot_ms": 3.3667253587483543
+        }
+      ],
+      "prefill_requests": [
+        {
+          "ok": true,
+          "input_tokens": 32790,
+          "cached_tokens": 0,
+          "output_tokens": 1,
+          "verify_steps": 0,
+          "started": 13277.237942896,
+          "first": 13279.876941912,
+          "last": 13279.876941912,
+          "finished": 13279.877946192,
+          "ttft_s": 2.6389990160005254,
+          "tpot_ms": 0
+        }
+      ]
+    }
+  ]
+}
