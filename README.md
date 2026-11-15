@@ -14,6 +14,8 @@ Set `XTIER=0` and `XTIER_86KD=1` in the existing SGLang startup environment. Exi
 
 The FP8 tuned config JSONs were measured for RTX PRO 5000; they remain in the pack but do not match the 6000D device name. New 6000D tuning must be measured before adding configs.
 
+The model-independent SM120 FlashInfer MXFP8 prefill tile hook is enabled by default in 86KD. It selects tactic 4 only for untuned CUTLASS MXFP8 calls with at least 256 rows and the expected six-tactic runner; set `XTIER_86KD_MXFP8_PREFILL_TILE=0` to turn it off. The existing 86KD compact 32K/1K results remain the development baseline; enabling this hook does not change those recorded measurements.
+
 The optional NVMe Engram row store requires a small native library. Build it only when using `XTIER_ENGRAM_ROWS=nvme`:
 
 ```bash
