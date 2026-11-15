@@ -162,6 +162,7 @@ def _relative(a, b):
 
 def _convert(model, captured):
     """Each captured layer's BF16 wo_a back to its exact FP8 form, checked; layers that do not check keep BF16."""
+    from sglang.srt.runtime_context import get_parallel
     done, kept, freed = 0, [], 0
     for name, mod in model.named_modules():
         m = LAYER_NAME.search(name + '.')
@@ -172,7 +173,21 @@ def _convert(model, captured):
         if w is None or w.dtype != torch.bfloat16 or not w.is_cuda or w.dim() != 2:
             continue
         G, R = mod.n_local_groups, mod.o_lora_rank
-        s = captured[layer].to(device=w.device).float().contiguous()
+        s = captured[layer]
+        # The checkpoint scale covers all output rows, while ColumnParallelLinear
+        # keeps only this attention-TP rank's contiguous output-row shard.
+        if s.shape[0] * BLOCK != w.shape[0]:
+            parallel = get_parallel()
+            local_blocks = w.shape[0] // BLOCK
+            if (w.shape[0] % BLOCK == 0 and s.shape[0] == local_blocks * parallel.attn_tp_size
+                    and s.shape[1] * BLOCK == w.shape[1]):
+                start = parallel.attn_tp_rank * local_blocks
+                s = s[start:start + local_blocks]
+        if layer == 0:
+            logger.info('xtier_86kd: wo_a TP%d rank%d weight=%s scale=%s',
+                        get_parallel().attn_tp_size, get_parallel().attn_tp_rank,
+                        tuple(w.shape), tuple(s.shape))
+        s = s.to(device=w.device).float().contiguous()
         sn, sk = s.shape
         ok = (G, R, w.shape[1]) != FAST_SHAPE and w.shape == (sn * BLOCK, sk * BLOCK) and G * R == w.shape[0]
         if ok:

@@ -328,7 +328,10 @@ def _b12x_rows():
 
 
 def _mxfp8_linear(original, input, *args, **kwargs):
-    if kwargs.get('backend', 'cutlass') == 'cutlass' and input.numel() // input.shape[-1] in _b12x_rows():
+    # TP8 Humming uses expert down projections with K=288; FlashInfer's b12x
+    # requires a full 128-wide K tile. Leave those projections on CUTLASS.
+    if (kwargs.get('backend', 'cutlass') == 'cutlass' and input.shape[-1] % 128 == 0
+            and input.numel() // input.shape[-1] in _b12x_rows()):
         kwargs['backend'] = 'b12x'
     return original(input, *args, **kwargs)
 

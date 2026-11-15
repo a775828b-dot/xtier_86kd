@@ -14,5 +14,15 @@ Set `XTIER=0` and `XTIER_86KD=1` in the existing SGLang startup environment. Exi
 
 The FP8 tuned config JSONs were measured for RTX PRO 5000; they remain in the pack but do not match the 6000D device name. New 6000D tuning must be measured before adding configs.
 
-Source license: Apache-2.0; see `LICENSE`.
+The optional NVMe Engram row store requires a small native library. Build it only when using `XTIER_ENGRAM_ROWS=nvme`:
 
+```bash
+cmake -S csrc -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+mkdir -p src/xtier_86kd/lib
+cp build/libxtier_tables.so src/xtier_86kd/lib/
+```
+
+For this 1 TiB RAM host, leave `XTIER_ENGRAM_ROWS` unset. SGLang stores Engram on the CPU and the other model weights on the eight GPUs. The benchmark script in `bench/bench_serving.py` measures one, 20 and 64 concurrent streaming requests with identical settings across runs.
+
+Source license: Apache-2.0; see `LICENSE`.
