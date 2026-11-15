@@ -2,7 +2,9 @@
 
 Only FlashInfer's six-tactic CUTLASS runner is changed. Explicitly tuned calls,
 other runner types, small batches, and other GPU architectures keep their
-original tactic. Ported from XTier's model-independent platform hook.
+original tactic. Ported from XTier's model-independent platform hook. SGLang
+pins DeepSeek's block-FP8-as-MXFP8 linears, so their fallback is overridden
+only for a TP8 expert shape checked bitwise on this host.
 """
 
 import logging
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 AUTOTUNER = "flashinfer.autotuner.autotuner.AutoTuner.choose_one"
 LARGE_TILE = 4  # 128 x 128 x 128, without A/B swap
 LARGE_ROWS = 256
+PINNED_SAFE_SHAPES = {(288, 5120)}  # (K, N), TP8 expert down projection
 _logged = False
 
 
@@ -30,15 +33,18 @@ def _sm120_cutlass_mxfp8(device_index, runner_type, tactic_count):
 def _choose_one(original, self, custom_op, runners, tuning_config, inputs, *args, **kwargs):
     global _logged
     runner, tactic = original(self, custom_op, runners, tuning_config, inputs, *args, **kwargs)
+    pinned = custom_op in getattr(self, "_effective_skip_ops", ())
     if (
         tactic == -1
         and custom_op == "mxfp8_gemm"
         and not self.is_tuning_mode
-        and custom_op not in getattr(self, "_effective_skip_ops", ())
         and inputs
+        and len(inputs) >= 2
         and inputs[0].dim() == 2
+        and inputs[1].dim() == 2
         and inputs[0].shape[0] >= LARGE_ROWS
         and inputs[0].is_cuda
+        and (not pinned or (inputs[0].shape[1], inputs[1].shape[1]) in PINNED_SAFE_SHAPES)
         and _sm120_cutlass_mxfp8(
             inputs[0].device.index,
             type(runner).__name__,
@@ -46,7 +52,10 @@ def _choose_one(original, self, custom_op, runners, tuning_config, inputs, *args
         )
     ):
         if not _logged:
-            logger.info("xtier_86kd: SM120 MXFP8 prefill tile %d active at %d rows", LARGE_TILE, inputs[0].shape[0])
+            logger.info(
+                "xtier_86kd: SM120 MXFP8 prefill tile %d active at M=%d K=%d N=%d pinned=%s",
+                LARGE_TILE, inputs[0].shape[0], inputs[0].shape[1], inputs[1].shape[1], pinned,
+            )
             _logged = True
         return runner, LARGE_TILE
     return runner, tactic
