@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(xtier_86kd_tables LANGUAGES CXX)
+find_package(Threads REQUIRED)
+add_library(xtier_tables SHARED tables/rows.cpp)
+target_compile_features(xtier_tables PRIVATE cxx_std_17)
+target_compile_options(xtier_tables PRIVATE -O2 -fvisibility=hidden -Wall -Wextra)
+target_link_libraries(xtier_tables PRIVATE Threads::Threads)

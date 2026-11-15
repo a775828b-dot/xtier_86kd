@@ -1,0 +1,373 @@
+"""Acceleration pack for SGLang's ``deepseek_v4`` models (DeepSeek V4.1 Flash 1017).
+
+- Engram rows on NVMe (``XTIER_ENGRAM_ROWS=nvme``; docs/design-tables-nvme.md): an ``EngramEmbedding`` keeps no table
+  in device or host memory. Its rows stay in the checkpoint file and come through a row table (xtier.tables: O_DIRECT
+  reads, a row cache of ``XTIER_ENGRAM_CACHE_GIB`` over all Engram layers, the owned rows' scales preloaded); the
+  owned-row gather ``_owned_rows`` becomes the graph-capturable lookup plus SGLang's ``engram_gather``. Hashing,
+  gating, the projections and the TP all-reduce stay SGLang's. The checkpoint directory is the served model's
+  (``XTIER_ENGRAM_MODEL`` overrides); staging for ``XTIER_ENGRAM_GRAPH_IDS`` ids (default 16384, 24 per token) is
+  allocated before any graph capture.
+- Engram rows prefetched (``XTIER_ENGRAM_PREFETCH``, default on; from the 1017 pipeline's DS41_ENGRAM_PREFETCH): every
+  forward hashes all tokens up front, so as soon as ``EngramHasher.forward`` returns, each Engram layer's lookup (ids
+  to the host, the row table's host function, rows back, dequantize) starts on a side stream of its own and overlaps
+  the layers before it (layer 0 for Engram layer 1, layers 2-13 for layer 14); the layer then only waits for its
+  event. The rows are the same; a graph captures the fork and the join. Otherwise the GPU waits for the host function
+  inside the layer. RTX PRO 5000, DSpark: decode step -2.4 ms (8K and 64K context, with the FP8 draft head below);
+  unlike the 1017 pipeline, prefill prefetches too (a 22528-token chunk looks up 540K rows per layer): 64K cold
+  prefill +16%.
+- DSpark draft LM head in FP8 (``XTIER_DRAFT_LMHEAD_FP8``, default on; DS41_DRAFT_LMHEAD_FP8): the draft projects
+  through the target's BF16 LM head (1.32 GB) every step. A copy in FP8 E4M3 with one scale per vocabulary row,
+  multiplied by ``torch._scaled_mm`` with per-token activation scales, takes 0.62 instead of 1.11 ms on the RTX PRO
+  5000 (+0.66 GB). It is made when the draft attaches the target's head, before any graph capture. Draft proposals
+  only: the target verifies every token with its BF16 head, so the output is the target's.
+- SM120 candidate indexer: SGLang sends every SM100-or-newer GPU to the sparse candidate table, whose DeepGEMM paged
+  sparse MQA logits exist on SM100 only; on SM120 the dense-block candidates (SGLang's path below SM100, DeepGEMM's
+  SM120 dense FP8 / FP4 MQA logits) serve prefill and decode.
+- Tuned W8A8 block-FP8 GEMM configs (fp8_configs/, from the 1017 pipeline's bench/ds41_fp8_tune.py): SGLang has none
+  for DeepSeek V4.1's 32 x 32 block projections on SM120 and runs one default tile for every shape, 1.5-4.6x slower
+  at decode sizes (on the RTX PRO 5000 63 ms of a 68 ms decode step). Files of this directory win over SGLang's own.
+- MXFP8 dense GEMMs at decode sizes on b12x: with --fp8-gemm-backend flashinfer_cutlass SGLang serves the
+  32 x 32 block FP8 projections as MXFP8 on FlashInfer CUTLASS (on auto it keeps the Triton block kernel, which on
+  SM120 has no split-K); calls of XTIER_MXFP8_B12X_ROWS rows (counts and ranges, comma separated) take FlashInfer's
+  b12x small-M kernels instead. Default 1-24: the widths of the decode graphs of up to four requests (plain decode;
+  with DSpark the draft's block of 5 rows and the verify's 6 rows a request) and every count between them. For the
+  same weights on the RTX PRO 5000 a projection takes 125-159 us on CUTLASS and 39-41 us on b12x, the outputs bitwise
+  equal at every count from 1 to 32 (tests/ds_mxfp8_rows_check.py). The setting grew with what was measured: 1, 4
+  and 6 in the 1017 pipeline's verify6 fast path and here until 2026-11-11; then the draft's 5 rows and two requests'
+  10 and 12 (a decode step -0.8 ms, a step of two requests with static verification 52.3 -> 44.0 ms;
+  docs/reports/2026-11-11-decode-step.md); the range since 2026-11-12, when the server went to four running requests
+  (15, 18, 20 and 24 rows; docs/reports/2026-11-12-ds-four-requests.md).
+- Attention wo_a at decode sizes on a Triton grouped einsum, the target's weights in the checkpoint's FP8
+  (``XTIER_DS_WO_A``, default on; the 1017 pipeline's LKQMOE_DS41_WO_A_TRITON / _FP8): SGLang dequantizes the 32 x 32
+  block FP8 wo_a to BF16 and cuBLAS runs the einsum on an SM80 WMMA kernel, 71-75 us per layer at the DSpark
+  verify's 6 tokens on the RTX PRO 5000, the FP8 kernel 30 us; see wo_a.py.
+- Indexer decode scored from the request table (``XTIER_DS_PAGED_INDEXER``, default on): SGLang takes its paged
+  FP4 index logits and fused top-k v2 on SM90 only; on SM120 it gathers every row's slots over the graph capacity
+  and selects with torch.topk. Nothing on the paged path is SM90-only; see paged_indexer.py. RTX PRO 5000, DSpark,
+  16K context: the indexer's kernels 1.08 -> 0.33 ms per decode step, the main stream's work 15.4 -> 13.7 ms;
+  agent_bench long responses 33.0 -> 32.5 ms per step.
+- (Until SGLang main e22a530 of 2026-10-23 prompts were tokenized here as DeepSeek's deepseek-recipe does; SGLang now
+  renders V4 / V4.1 chat prompts with deepseek-recipe itself.)
+- Attention below SM90 (sparse_mla.py; RTX 30 / 40 series): off SM120 SGLang serves every DeepSeek V4 attention call
+  through FlashMLA, built for SM90 / SM100 only; a Triton sparse MLA over the same FP8 pages takes the backend's calls,
+  prefill included (it stays on the paged caches, as on SM120).
+- mHC pre-mix below SM90 (mhc_splitk.py): SGLang's TileLang split-K GEMM, which serves it without DeepGEMM, has no
+  hidden block for V4.1 Flash's 20480 in its table; the same kernel with V4 Pro's block.
+- FP8 below SM89 (RTX 30 series), where Triton has no float8e4nv: the 32 x 32 block FP8 projections weight-only
+  (w8a16.py; Marlin, SGLang's choice there, has no 32-wide groups), Engram rows (engram_gather.py; SGLang's gather
+  with the payload's bytes decoded in software) and the E4M3 rounding of the compressed KV's FP4 block scales
+  (fake_quant_fp8.py; SGLang's kernel rebuilt with the round trip in software). The DSpark draft's FP8 LM head
+  (torch._scaled_mm, SM89 and newer) stays BF16 there.
+- Decoder replay tail without graphs: with --enable-decoder-swa-bounded-replay SGLang runs the late layers of a
+  prefill from row-bucket CUDA graphs captured while serving (up to SGLANG_DSV4_DECODER_TAIL_GRAPH_MAX_ROWS = 2048
+  rows). Their MoE calls of hundreds to thousands of rows cannot go through XTier's capturable decode path (mailbox
+  slots of at most 16 tokens), so the tail runs eagerly on XTier's prefill paths; the replay itself is unchanged.
+"""
+
+import functools
+import json
+import logging
+import os
+from pathlib import Path
+
+import torch
+
+logger = logging.getLogger(__name__)
+ENGRAM = 'sglang.srt.layers.engram.EngramEmbedding'
+ENGRAM_LAYER = 'sglang.srt.layers.engram.Engram'
+HASHER = 'sglang.srt.layers.engram.EngramHasher'
+DSPARK_DRAFT = 'sglang.srt.models.deepseek_v4_dspark.DeepseekV4ForCausalLMDSpark'
+DRAFT_PROJECT = 'sglang.srt.models.dspark.project_through_lm_head'
+INDEXER = 'sglang.srt.layers.attention.dsv4.v41_indexer.make_candidate_indexer'
+INDEXER_ARCH = 'sglang.srt.layers.attention.dsv4.v41_indexer.is_sm100'
+FP8_CONFIGS = 'sglang.kernels.ops.gemm.fp8_kernel.get_w8a8_block_fp8_configs'
+REPLAY_TAIL = 'sglang.srt.models.deepseek_v4_replay_tail.DecoderReplayTail.maybe_create'
+MXFP8_LINEAR = 'sglang.srt.layers.quantization.fp8_utils.flashinfer_mxfp8_blockscaled_linear'
+FLASH_MLA = 'sglang.kernels.ops.attention.flash_mla_interface.flash_mla_with_kvcache'
+SPARSE_PREFILL = 'sglang.srt.layers.attention.deepseek_v4_backend.DeepseekV4AttnBackend._use_sparse_prefill'
+FP8_CONFIG_DIR = Path(__file__).with_name('fp8_configs')
+ENGRAM_LAYERS = 2   # DeepSeek V4.1 Flash has two Engram layers (1 and 14); the cache budget is split over them
+ROW_BYTES, SCALE_BYTES, BLOCK = 256, 8, 32   # an FP8 E4M3 row of 256 with one E8M0 scale per 32
+FP8_MAX = 448.0
+_prefetching = {}   # Engram layer's hash index -> (its EngramEmbedding on the row table, side stream); one target model
+
+
+def model_dir():
+    path = os.environ.get('XTIER_ENGRAM_MODEL')
+    if not path:
+        from sglang.srt.runtime_context import get_model
+        path = get_model().model_path
+    return path
+
+
+def open_table(model, layer_id, cache_bytes, row_range=None):
+    """Row table of layer `layer_id`'s Engram embedding in checkpoint `model`."""
+    from xtier_86kd.tables import RowStore, Segment, tensor_locations
+
+    weight, scale = (f'layers.{layer_id}.engram.embed.{n}' for n in ('weight', 'scale'))
+    found = tensor_locations(model, (weight, scale))
+    (wpath, wshape, wdtype, woff), (spath, sshape, sdtype, soff) = found[weight], found[scale]
+    rows = wshape[0]
+    if wpath != spath or wshape != [rows, ROW_BYTES] or wdtype != 'F8_E4M3' or sshape != [rows, SCALE_BYTES] \
+            or sdtype != 'F8_E8M0':
+        raise ValueError(f'xtier: Engram layer {layer_id}: unexpected table {wshape} {wdtype} / {sshape} {sdtype}')
+    return RowStore([Segment(wpath, rows, woff, soff)], ROW_BYTES, SCALE_BYTES, cache_bytes, row_range)
+
+
+class EngramLookup:
+    """BF16 Engram rows of device ids (zero rows outside the store's owned range), on the current stream."""
+
+    def __init__(self, store):
+        from xtier_86kd.tables.lookup import GraphLookup
+        self.store, self.lookup = store, GraphLookup(store)
+
+    def warm(self, count, device):
+        self.lookup.warm(count, device)
+
+    def fill(self, indices, out):
+        from sglang.kernels.ops.embeddings.engram_gather import engram_gather
+
+        if indices.numel():
+            rows, scales, sequential = self.lookup.fetch(indices)
+            engram_gather(rows.data_ptr(), scales.data_ptr(), sequential, out.view(-1, ROW_BYTES), ROW_BYTES, BLOCK)
+        return out
+
+    def __call__(self, indices):
+        return self.fill(indices, torch.empty(*indices.shape, ROW_BYTES, dtype=torch.bfloat16, device=indices.device))
+
+
+def _check_rows(self, param, loaded_weight):
+    """Loader of the empty parameters: the checkpoint tensor is only checked, never read (it stays a lazy mapping)."""
+    if loaded_weight.shape[0] != self._xtier_rows.rows:
+        raise ValueError(f'xtier: Engram table of {loaded_weight.shape[0]} rows, the row store has '
+                         f'{self._xtier_rows.rows}')
+
+
+def _init(original, self, num_embeddings, dim, layer_id, column_bounds, *args, mxfp4=False, **kwargs):
+    from sglang.srt.arg_groups import engram_config   # its EngramLookup, not this module's
+    from sglang.srt.layers.engram import resolve_engram_config, shard_range
+    from sglang.srt.runtime_context import get_parallel
+
+    if dim != ROW_BYTES:
+        raise ValueError(f'xtier: Engram rows on NVMe hold {ROW_BYTES} FP8 values, not {dim}')
+    if mxfp4:   # quantization_config.engram_embed_quant = 'mxfp4' (SGLang reads such tables since 27bc1a0)
+        raise ValueError('xtier: Engram rows on NVMe hold FP8 rows; this checkpoint stores its Engram tables in MXFP4')
+    torch.nn.Module.__init__(self)
+    self.dim = dim
+    self.mxfp4, self.row_bytes = False, dim   # the FP8 table: a byte a value
+    self.tp_size = get_parallel().tp_size
+    self.row_start, row_end = shard_range(num_embeddings, column_bounds, get_parallel().tp_rank, self.tp_size)
+    self.rows = row_end - self.row_start
+    self.host_table = None
+    # what SGLang's __init__ sets for its peer reads, host table and DP lookups; none of them serves rows on NVMe, so
+    # forward() comes to _lookup and the rows to _owned_rows (replaced below); a peer read falls back to the all-reduce
+    self._sort_host_reads = False
+    self.staged_by_scheduler = False
+    self.peer = None
+    lookup, kinds = resolve_engram_config(len(column_bounds) - 1).lookup, engram_config.EngramLookup
+    self.lookup = kinds.ALL_REDUCE if lookup == kinds.PEER_READ else lookup
+    self._cols_per_rank = engram_config.cols_per_rank(len(column_bounds) - 1, self.tp_size)
+    cache = int(float(os.environ.get('XTIER_ENGRAM_CACHE_GIB', '4')) * 2**30) // ENGRAM_LAYERS
+    store = open_table(model_dir(), layer_id, cache, (self.row_start, row_end))
+    if store.rows != num_embeddings:
+        raise ValueError(f'xtier: Engram layer {layer_id}: config {num_embeddings} rows, checkpoint {store.rows}')
+    store.preload_scales()
+    self._xtier_rows = store
+    self._xtier_lookup = EngramLookup(store)
+    self._xtier_lookup.warm(int(os.environ.get('XTIER_ENGRAM_GRAPH_IDS', '16384')),
+                            torch.device('cuda', torch.cuda.current_device()))
+    self.weight = torch.nn.Parameter(torch.empty(0, dim, dtype=torch.float8_e4m3fn), requires_grad=False)
+    self.scale = torch.nn.Parameter(torch.empty(0, dim // BLOCK, dtype=torch.float8_e8m0fnu), requires_grad=False)
+    self.weight.weight_loader = functools.partial(_check_rows, self)
+    self.scale.weight_loader = functools.partial(_check_rows, self)
+    logger.info('xtier: Engram layer %d: %d rows [%d, %d) on NVMe (%s), row cache %.1f GiB', layer_id,
+                num_embeddings, self.row_start, row_end, store.describe(), cache / 2**30)
+
+
+def _view_key(t):
+    return t.data_ptr(), tuple(t.shape), tuple(t.stride())
+
+
+def _engram_layer_init(result, self, *args, **kwargs):
+    """After ``Engram.__init__``: a layer on the row table joins the prefetch, with a side stream of its own."""
+    if getattr(self.embed, '_xtier_lookup', None) is not None:
+        _prefetching[self.layer_hash_index] = (self.embed, torch.cuda.Stream())
+    return result
+
+
+def _prefetch(hash_ids, self, input_ids, *args, **kwargs):
+    """After ``EngramHasher.forward`` (hash ids [T, Engram layers, hash columns]): every Engram layer's lookup starts
+    on its side stream. The ids are made contiguous and the output allocated on the current stream, and both stay
+    referenced until the layer has waited for the lookup."""
+    if not _prefetching or hash_ids.dim() != 3 or hash_ids.shape[0] == 0 or not hash_ids.is_cuda:
+        return hash_ids
+    main = torch.cuda.current_stream()
+    for index, (embedding, side) in _prefetching.items():
+        if index >= hash_ids.shape[1]:
+            continue
+        view = hash_ids[:, index]
+        ids = view.contiguous()
+        out = torch.empty(*view.shape, ROW_BYTES, dtype=torch.bfloat16, device=view.device)
+        side.wait_stream(main)
+        with torch.cuda.stream(side):
+            embedding._xtier_lookup.fill(ids, out)
+            done = torch.cuda.Event()
+            done.record(side)
+        embedding._xtier_prefetched = (_view_key(view), out, done, ids)
+    return hash_ids
+
+
+def _owned_rows(self, indices):
+    prefetched = getattr(self, '_xtier_prefetched', None)
+    if prefetched is not None:
+        self._xtier_prefetched = None
+        key, out, done, _ = prefetched
+        torch.cuda.current_stream().wait_event(done)   # also orders an inline lookup after it (shared staging)
+        if key == _view_key(indices):
+            return out
+    return self._xtier_lookup(indices)
+
+
+def _quantize_lm_head(lm_head):
+    """Row-scaled FP8 E4M3 copy of a BF16 LM head for the draft: (weight [vocab, hidden], scales [1, vocab])."""
+    weight = lm_head.weight.data
+    n, k = weight.shape
+    qweight = torch.empty((n, k), dtype=torch.float8_e4m3fn, device=weight.device)
+    scale = torch.empty((n, 1), dtype=torch.float32, device=weight.device)
+    for start in range(0, n, 8192):   # bounded FP32 transients
+        rows = weight[start:start + 8192].float()
+        sc = rows.abs().amax(dim=1, keepdim=True).clamp_min(1e-12) / FP8_MAX
+        qweight[start:start + 8192] = (rows / sc).to(torch.float8_e4m3fn)
+        scale[start:start + 8192] = sc
+    lm_head._xtier_draft_fp8 = (qweight, scale.t().contiguous())
+    logger.info('xtier: DSpark draft LM head as a row-scaled FP8 copy %s (%.2f GiB)', tuple(qweight.shape),
+                qweight.numel() / 2**30)
+
+
+def _attach_shared(result, self, *args, **kwargs):
+    """After the DSpark draft attached the target's LM head (before its graphs are captured)."""
+    head = getattr(self, 'lm_head', None)
+    if (head is not None and getattr(head, 'weight', None) is not None and head.weight.dtype == torch.bfloat16
+            and head.weight.dim() == 2 and getattr(head, '_xtier_draft_fp8', None) is None):
+        _quantize_lm_head(head)
+    return result
+
+
+def _draft_project(original, hidden, lm_head):
+    packed = getattr(lm_head, '_xtier_draft_fp8', None)
+    if packed is None:
+        return original(hidden, lm_head)
+    qweight, scale = packed
+    x = hidden.reshape(-1, hidden.shape[-1]).float()
+    sx = x.abs().amax(dim=1, keepdim=True).clamp_min(1e-12) / FP8_MAX
+    out = torch._scaled_mm((x / sx).to(torch.float8_e4m3fn), qweight.t(), scale_a=sx, scale_b=scale,
+                           out_dtype=torch.bfloat16)
+    return out.view(*hidden.shape[:-1], qweight.shape[0])
+
+
+def _indexer_arch(original, *args, **kwargs):
+    """Around SGLang's v41_indexer.is_sm100, which picks the DSv4.1 indexer's DeepGEMM fp8_fp4 MQA-logits kernels for
+    prefill and decode: SGLang 27bc1a0 narrowed it from SM100 and newer to the SM100 family, so SM12x took the torch /
+    Triton indexer and a 520K prefill ran 1.8x slower (each 22K chunk 5 s -> 12 s as the context grew). SM12x keeps
+    DeepGEMM, as up to 6162b07."""
+    return original(*args, **kwargs) or torch.cuda.get_device_capability()[0] == 12
+
+
+def _make_candidate_indexer(original, *args, **kwargs):
+    from sglang.srt.layers.deep_gemm_wrapper.configurer import DEEPGEMM_PAGED_SPARSE_MQA_LOGITS
+
+    if (DEEPGEMM_PAGED_SPARSE_MQA_LOGITS or torch.cuda.get_device_capability()[0] != 12
+            or kwargs.get('candidate_topk_blocks', 1) <= 0):
+        return original(*args, **kwargs)
+    from sglang.srt.layers.attention.dsv4 import v41_indexer
+    from sglang.srt.layers.attention.dsv4.v41_indexer.dense_blocks import DenseBlocksBackend
+
+    dense = DenseBlocksBackend(token_to_kv_pool=kwargs['token_to_kv_pool'], req_to_token=kwargs['req_to_token'],
+                               candidate_topk_blocks=kwargs['candidate_topk_blocks'],
+                               candidate_block_size=kwargs['candidate_block_size'],
+                               use_deep_gemm_prefill=v41_indexer._use_deep_gemm_prefill())
+    return dense, dense
+
+
+@functools.lru_cache
+def _tuned(N, K, block_n, block_k):
+    device = torch.cuda.get_device_name().replace(' ', '_')
+    path = FP8_CONFIG_DIR / f'N={N},K={K},device_name={device},dtype=fp8_w8a8,block_shape=[{block_n}, {block_k}].json'
+    if not path.exists():
+        return None
+    configs = {int(m): c for m, c in json.loads(path.read_text()).items()}
+    if any(c['BLOCK_SIZE_K'] < block_k or c['BLOCK_SIZE_K'] % block_k for c in configs.values()):
+        return None   # the kernel steps the scales per BLOCK_SIZE_K, which must cover the block
+    logger.info('xtier: W8A8 block FP8 config %s', path.name)
+    return configs
+
+
+def _fp8_configs(original, N, K, block_n, block_k):
+    if not torch._dynamo.is_compiling():
+        configs = _tuned(N, K, block_n, block_k)
+        if configs is not None:
+            return configs
+    return original(N, K, block_n, block_k)
+
+
+def _replay_tail(original, cls, model, *args, **kwargs):
+    # This package keeps SGLang's MoE backend, so replay does not need XTier's mailbox restriction.
+    return original(cls, model, *args, **kwargs)
+
+
+@functools.lru_cache
+def _b12x_rows():
+    if torch.cuda.get_device_capability()[0] != 12:
+        return frozenset()
+    rows = set()
+    for part in os.environ.get('XTIER_MXFP8_B12X_ROWS', '1-24').split(','):   # counts and ranges: 5,10-12
+        first, _, last = part.strip().partition('-')
+        if first:
+            rows.update(range(int(first), int(last or first) + 1))
+    return frozenset(rows)
+
+
+def _mxfp8_linear(original, input, *args, **kwargs):
+    if kwargs.get('backend', 'cutlass') == 'cutlass' and input.numel() // input.shape[-1] in _b12x_rows():
+        kwargs['backend'] = 'b12x'
+    return original(input, *args, **kwargs)
+
+
+def install(registry, hook_type):
+    from xtier_86kd.packs.deepseek_v4 import ragged_verify, paged_indexer, wo_a
+
+    registry.register('sglang.srt.speculative.dspark_components.dspark_planner.DSparkVerifyPlanner.set_forced_budget_frac',
+                      ragged_verify.forced_budget, hook_type.AFTER)
+    # Current SGLang keeps sparse-table candidates strict to SM100 and already
+    # selects dense-block candidates on SM120. Forcing is_sm100 on this version
+    # would route RTX 6000D into an unsupported sparse DeepGEMM kernel.
+    if os.environ.get('XTIER_86KD_LEGACY_INDEXER') == '1':
+        registry.register(INDEXER_ARCH, _indexer_arch, hook_type.AROUND)
+        registry.register(INDEXER, _make_candidate_indexer, hook_type.AROUND)
+    registry.register(REPLAY_TAIL, _replay_tail, hook_type.AROUND)
+    wo_a.install(registry, hook_type)
+    paged_indexer.install(registry, hook_type)
+    if os.environ.get('XTIER_FP8_CONFIGS', '1') != '0':   # speed only: 0 keeps SGLang's own configs
+        registry.register(FP8_CONFIGS, _fp8_configs, hook_type.AROUND)
+    registry.register(MXFP8_LINEAR, _mxfp8_linear, hook_type.AROUND)
+    if torch.cuda.get_device_capability()[0] < 9:
+        from xtier_86kd.packs.deepseek_v4 import mhc_splitk, sparse_mla
+        registry.register(FLASH_MLA, sparse_mla.flash_mla_with_kvcache, hook_type.AROUND)
+        registry.register(SPARSE_PREFILL, sparse_mla.no_sparse_prefill, hook_type.AROUND)
+        registry.register(mhc_splitk.MHC_PRE, mhc_splitk.mhc_pre, hook_type.AROUND)
+    from xtier_86kd.arch import HW_FP8
+    if not HW_FP8:
+        from xtier_86kd.packs.deepseek_v4 import engram_gather, fake_quant_fp8, w8a16
+        registry.register(f'{w8a16.FP8_METHOD}.__init__', w8a16.no_marlin, hook_type.AFTER)
+        registry.register(w8a16.BLOCK_LINEAR, w8a16.linear, hook_type.AROUND)
+        registry.register(engram_gather.ENGRAM_GATHER, engram_gather.replace, hook_type.AROUND)
+        registry.register(fake_quant_fp8.LAUNCHER, fake_quant_fp8.launcher, hook_type.AROUND)
+    if os.environ.get('XTIER_ENGRAM_ROWS', '') == 'nvme':
+        registry.register(f'{ENGRAM}.__init__', _init, hook_type.AROUND)
+        registry.register(f'{ENGRAM}._owned_rows', _owned_rows, hook_type.REPLACE)
+        if os.environ.get('XTIER_ENGRAM_PREFETCH', '1') != '0':
+            registry.register(f'{ENGRAM_LAYER}.__init__', _engram_layer_init, hook_type.AFTER)
+            registry.register(f'{HASHER}.forward', _prefetch, hook_type.AFTER)
+    if os.environ.get('XTIER_DRAFT_LMHEAD_FP8', '1') != '0' and torch.cuda.get_device_capability() >= (8, 9):
+        registry.register(f'{DSPARK_DRAFT}.attach_shared_modules', _attach_shared, hook_type.AFTER)
+        registry.register(DRAFT_PROJECT, _draft_project, hook_type.AROUND)

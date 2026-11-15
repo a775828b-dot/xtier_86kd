@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xtier-86kd"
+version = "0.1.0"
+description = "DeepSeek V4.1 Flash SGLang accelerations for eight RTX PRO 6000D GPUs"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+dependencies = []
+
+[project.entry-points."sglang.srt.plugins"]
+xtier_86kd = "xtier_86kd.plugin:load"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+xtier_86kd = ["packs/deepseek_v4/fp8_configs/*.json", "lib/*.so"]

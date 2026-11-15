@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+src/xtier_86kd/lib/*.so
