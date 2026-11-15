@@ -23,6 +23,13 @@ mkdir -p src/xtier_86kd/lib
 cp build/libxtier_tables.so src/xtier_86kd/lib/
 ```
 
-For this 1 TiB RAM host, leave `XTIER_ENGRAM_ROWS` unset. SGLang stores Engram on the CPU and the other model weights on the eight GPUs. The benchmark script in `bench/bench_serving.py` measures one, 20 and 64 concurrent streaming requests with identical settings across runs.
+For this 1 TiB RAM host, leave `XTIER_ENGRAM_ROWS` unset. SGLang stores Engram on the CPU and the other model weights on the eight GPUs.
+
+## Benchmarks
+
+`bench/bench_serving.py` measures concurrent streaming requests. For the development sweep, use `--prompt-tokens 32768 --output-tokens 1024 --concurrencies 4,8,16,32 --rounds 1` with the same model, server parameters, and corpus. Each round gets a unique prompt prefix to prevent reuse of earlier KV cache entries. `prefill_window_tps_est` is the total input tokens divided by the interval from the first request start to the last first token; it includes scheduling and any overlapping decode, so it is an end-to-end estimate rather than isolated kernel throughput. `decode_window_tps` is total output tokens divided by the interval from the first to last streamed output token. Report success counts with both rates.
+
+`bench/agent_bench.py` is adapted from XTier's coding-agent benchmark. It supports `--api-key-file` for this server and stores only the file path, never the secret. Supply `--repo /data/src/xtier --lsglang /data/src/sglang-xtier --tokenizer /data/models/DeepSeek-V4.1-Flash-1017`. It reports per-request cold prefill, cached TTFT, decode throughput, and DSpark verify step time. For compact verification, build an SPS cost table on this machine with `bench/sps_profile.py` before enabling its table path; a table from another GPU is not valid calibration.
 
 Source license: Apache-2.0; see `LICENSE`.
+

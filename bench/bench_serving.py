@@ -7,6 +7,7 @@ import json
 import math
 import statistics
 import time
+import uuid
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -32,6 +33,7 @@ parser.add_argument('--corpus', default='/data/bench/sglang-corpus.txt')
 parser.add_argument('--tokenizer', default='/data/models/DeepSeek-V4.1-Flash-1017')
 parser.add_argument('--out', default='/data/bench/serving-64.json')
 args = parser.parse_args()
+run_id = uuid.uuid4().hex[:12]
 key = open(args.api_key_file).read().strip() if args.api_key_file else None
 url = f'http://{args.host}:{args.port}/v1/chat/completions'
 long_prompt = ''
@@ -50,8 +52,8 @@ def percentile(values, fraction):
     return ordered[max(0, min(len(ordered) - 1, math.ceil(fraction * len(ordered)) - 1))]
 
 
-def run_one(index):
-    content = f'Case {index}: ' + (long_prompt or PROMPTS[index % len(PROMPTS)])
+def run_one(index, case_prefix):
+    content = f'Case {case_prefix}-{index}: ' + (long_prompt or PROMPTS[index % len(PROMPTS)])
     body = {
         'model': args.model,
         'messages': [{'role': 'user', 'content': content}],
@@ -107,8 +109,8 @@ rows = []
 for concurrency in [int(value) for value in args.concurrencies.split(',')]:
     for round_index in range(args.rounds):
         with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
-            results = list(pool.map(run_one, range(round_index * concurrency,
-                                                   (round_index + 1) * concurrency)))
+            case_prefix = f'{run_id}-{concurrency}-{round_index}'
+            results = list(pool.map(lambda index: run_one(index, case_prefix), range(concurrency)))
         good = [row for row in results if row['ok']]
         summary = {
             'concurrency': concurrency,
@@ -121,6 +123,9 @@ for concurrency in [int(value) for value in args.concurrencies.split(',')]:
             summary.update({
                 'input_tokens': sum(row['input_tokens'] for row in good),
                 'output_tokens': sum(row['output_tokens'] for row in good),
+                'prefill_window_tps_est': round(sum(row['input_tokens'] for row in good) /
+                                                (max(row['first'] for row in good) -
+                                                 min(row['started'] for row in results)), 2),
                 'successful_output_tps': round(sum(row['output_tokens'] for row in good) /
                                                (max(row['finished'] for row in results) -
                                                 min(row['started'] for row in results)), 2),
@@ -136,3 +141,4 @@ for concurrency in [int(value) for value in args.concurrencies.split(',')]:
         print(json.dumps(summary, ensure_ascii=False), flush=True)
 with open(args.out, 'w') as stream:
     json.dump({'options': vars(args), 'rounds': rows}, stream, indent=2, ensure_ascii=False)
+
