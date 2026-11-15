@@ -43,9 +43,11 @@ def load():
         return
     try:
         from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+        from xtier_86kd.mxfp8_prefill import install as install_mxfp8_prefill
         from xtier_86kd.packs.deepseek_v4 import install
 
         _require_hooks()
+        install_mxfp8_prefill(HookRegistry, HookType)
         install(HookRegistry, HookType)
         _installed = True
         logger.info("xtier_86kd: DeepSeek V4.1 hooks registered in scheduler PID %d", os.getpid())
@@ -55,3 +57,4 @@ def load():
 
         traceback.print_exc(file=sys.stderr)
         raise SystemExit(f"xtier_86kd plugin setup failed: {type(exc).__name__}: {exc}") from exc
+
