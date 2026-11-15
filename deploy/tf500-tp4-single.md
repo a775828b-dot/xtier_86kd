@@ -34,3 +34,7 @@
 首轮 GPU 时间线中，热专家 `_gate_up` 与 `_down` 内核中位分别 0.0499 / 0.0123 ms，远短于无 profiler 轮 0.340 ms 的 CPU 每层调用；`_unpack` 在 CPU 回调完成后执行。Profiler 轮的 GPU 在 CPU 回调末尾空闲中位约 1.97 ms，但 profiler 放大 CPU 回调，**只用于确认等待方向，不作为生产等待时长**。结论：每层 GPU 热专家先完成，GPU mailbox 主要等待 CPU 专家结果；CPU 在层间也等待 GPU 前向/通信与调度，单发总体两侧均有可见耗时。
 
 原始数据在服务器 `/data/bench/xtier-tp4-single*.json`、`/data/bench/xtier-tp4-single*.gpu.csv`、`/data/bench/xtier-tp4-single-profile/`。`analyze-tp4-trace.py` 读取临时路由记录。生产启动脚本已取消默认 `XTIER_ROUTE_TRACE`，避免跟踪文件持续增长。以上显存余量为采样值，不能证明采样间隔内的瞬时最低值。
+
+## 生产重启复核
+
+去掉临时路由跟踪后，服务重新加载成功，`XTIER_ROUTE_TRACE` 未设置。`/v1/models` 返回正确模型；鉴权短请求 0.443 秒返回“测试成功”。`xtier-tp4.service` 运行中、0 次重启；日志再次确认 KV `full=20000000`。GPU 4–7 空闲，原 TP8 服务停用但保留。此处只复核可用性，不把短请求当作 32K/1K 性能结果。
