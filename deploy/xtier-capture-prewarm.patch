@@ -1,0 +1,41 @@
+diff --git a/xtier/engine/__init__.py b/xtier/engine/__init__.py
+--- a/xtier/engine/__init__.py
++++ b/xtier/engine/__init__.py
+@@ -344,6 +344,11 @@
+             raise RuntimeError(self.error())
+         return rc
+ 
++    def prepare_decode(self, stream, k, width):
++        """Allocate every decode slot shape before SGLang captures CUDA graphs."""
++        for m in range(1, width + 1):
++            self._check(self.lib.xtier_mailbox_prepare(self.bridge, stream, m, k, 0))
++
+     def slot(self, stream, m, k, with_routes=False):
+         """Device-visible addresses of the slot's pinned x, ids, routing, output (and original routes with
+         with_routes, for the expert pool)."""
+diff --git a/xtier/backend/method.py b/xtier/backend/method.py
+--- a/xtier/backend/method.py
++++ b/xtier/backend/method.py
+@@ -107,6 +107,7 @@
+         if unsupported:
+             raise NotImplementedError(f'xtier: layer {self.cfg.layer_id}: unsupported {", ".join(unsupported)}')
+         self.hidden, self.inter, self.experts = hidden_size, intermediate_size_per_partition, num_experts
++        self.top_k = getattr(layer, 'top_k', None) or MAX_TOP_K
+         self.swiglu_limit = float(rc.swiglu_limit or rc.gemm1_clamp_limit or 0.0)
+         # GPT-OSS SwiGLU (MiniMax M3: alpha 1.702, beta 1): gate * sigmoid(alpha * gate) * (up + beta)
+         self.swiglu_alpha = 1.0 if rc.gemm1_alpha is None else float(rc.gemm1_alpha)
+@@ -555,6 +556,14 @@
+         if cached:
+             from xtier.cache import pool
+             pool.fill_all()
++        stream = torch.cuda.current_stream().cuda_stream
++        prepared = 0
++        for method in new:
++            if method.pool is not None and not method.pool.full:
++                method.mailbox.prepare_decode(stream, method.top_k, slot_width(method.top_k))
++                prepared += 1
++        if prepared:
++            logger.info('xtier: prepared decode mailbox shapes for %d layers before CUDA graph capture', prepared)
+ 
+     @staticmethod
+     def _cache_start():

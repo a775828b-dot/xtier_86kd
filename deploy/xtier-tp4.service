@@ -1,0 +1,21 @@
+[Unit]
+Description=XTier DeepSeek V4.1 Flash hybrid TP4 on GPU 0-3 / NUMA 0
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<user>
+Group=<user>
+WorkingDirectory=/data/src/xtier_86kd
+ExecStart=/bin/bash /data/src/xtier_86kd/deploy/start-xtier-tp4.sh
+Restart=on-failure
+RestartSec=30
+KillSignal=SIGINT
+TimeoutStopSec=300
+LimitNOFILE=1048576
+LimitMEMLOCK=infinity
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
