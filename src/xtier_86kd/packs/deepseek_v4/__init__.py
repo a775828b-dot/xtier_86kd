@@ -344,16 +344,40 @@ def _b12x_wide_rows():
 
 
 _B12X_WIDE_N = int(os.environ.get('XTIER_MXFP8_B12X_WIDE_N', '16384'))
+_USE_MXFP8_TABLE = os.environ.get('XTIER_86KD_MXFP8_TABLE', '1') != '0'
+
+
+@functools.lru_cache
+def _is_sm120() -> bool:
+    return torch.cuda.is_available() and torch.cuda.get_device_capability()[0] == 12
 
 
 def _mxfp8_linear(original, input, *args, **kwargs):
-    # TP8 Humming uses expert down projections with K=288; FlashInfer's b12x
-    # requires a full 128-wide K tile. Leave those projections on CUTLASS.
-    if kwargs.get('backend', 'cutlass') == 'cutlass' and input.shape[-1] % 128 == 0:
-        weight = args[0] if args else kwargs.get('weight')
-        n_out = weight.shape[0] if weight is not None and hasattr(weight, 'shape') else 0
+    # Step 4A: Override SGLang's unconditional backend='b12x' (for K%128==0) and
+    # CUTLASS tactic=-1 (for K=288) using measured SM120 per-shape winners.
+    k = input.shape[-1]
+    m = input.numel() // k if k else 0
+    weight = args[0] if args else kwargs.get('weight')
+    n_out = weight.shape[0] if weight is not None and hasattr(weight, 'shape') and len(weight.shape) >= 1 else 0
+    if _USE_MXFP8_TABLE and n_out > 0 and input.is_cuda and _is_sm120():
+        from xtier_86kd.mxfp8_prefill import forced_cutlass_tactic, select_sm120_mxfp8_plan
+
+        plan = select_sm120_mxfp8_plan(m, k, n_out)
+        if plan is not None:
+            backend, tactic = plan
+            if backend == 'b12x' and k % 128 == 0:
+                kwargs['backend'] = 'b12x'
+                return original(input, *args, **kwargs)
+            if backend == 'cutlass':
+                kwargs['backend'] = 'cutlass'
+                with forced_cutlass_tactic(tactic):
+                    return original(input, *args, **kwargs)
+
+    # Fallback for unmeasured shapes: TP8 Humming uses expert down projections
+    # with K=288; FlashInfer's b12x requires a full 128-wide K tile.
+    if kwargs.get('backend', 'cutlass') == 'cutlass' and k % 128 == 0:
         allowed = _b12x_wide_rows() if n_out >= _B12X_WIDE_N else _b12x_rows()
-        if input.numel() // input.shape[-1] in allowed:
+        if m in allowed:
             kwargs['backend'] = 'b12x'
     return original(input, *args, **kwargs)
 

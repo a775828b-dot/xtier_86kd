@@ -1,0 +1,441 @@
+{
+  "generated_at": "2026-11-17",
+  "sd_popt5_s1234": {
+    "tag": "sd-popt5-s1234",
+    "capacity": {
+      "global_kv_tokens": 113958912,
+      "per_dp_kv_tokens": 14244864,
+      "per_dp_swa_tokens": 167424,
+      "weight_gib_per_gpu": 51.842,
+      "startup_available_gib": 10.05
+    },
+    "gpu_telemetry": {
+      "samples": 1968,
+      "min_free_mib": 2186.0,
+      "min_free_gib": 2.1348,
+      "min_free_ts": "2026/11/16 23:32:12.153",
+      "min_free_gpu": 0,
+      "max_used_mib": 82857.0
+    },
+    "smoke": {
+      "chinese": {
+        "ok": true,
+        "answer": "NVMe\uff08\u975e\u6613\u5931\u6027\u5185\u5b58\u4e3b\u673a\u63a7\u5236\u5668\u63a5\u53e3\u89c4\u8303\uff09\u662f\u4e00\u79cd\u4e13\u4e3a\u56fa\u6001\u786c\u76d8\uff08SSD\uff09\u8bbe\u8ba1\u7684\u9ad8\u6027\u80fd\u3001\u4f4e\u5ef6\u8fdf\u5b58\u50a8\u8bbf\u95ee\u534f\u8bae\uff0c\u901a\u8fc7PCIe\u603b\u7ebf\u76f4\u63a5\u4e0eCPU\u901a\u4fe1\uff0c\u5927\u5e45\u63d0\u5347\u6570\u636e\u4f20\u8f93\u901f\u5ea6\u3002",
+        "usage": {
+          "prompt_tokens": 13,
+          "total_tokens": 60,
+          "completion_tokens": 47,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "code": {
+        "ok": true,
+        "answer": "# Python `add` Function\n\n```python\ndef add(a: int, b: int) -> int:\n    \"\"\"Return the sum of two integers.\"\"\"\n    return a + b\n```\n\n## Example Usage\n\n```python\nprint(add(2, 3))      # 5\nprint(add(-4, 10))    # 6\nprint(add(0, 0))      # 0\n```\n\n## Notes\n\n- The function accepts two parameters, `a` and `b`, and returns their sum.\n- Type hints (`int`) are included for clarity, but Python will still work with other numeric types (e.g., floats) if passed.\n- If you want to strictly enforce integer inputs",
+        "usage": {
+          "prompt_tokens": 16,
+          "total_tokens": 230,
+          "completion_tokens": 214,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "stream_tool": {
+        "ok": true,
+        "calls": [
+          {
+            "name": "get_weather",
+            "arguments": "{\"city\": \"Beijing\"}"
+          }
+        ],
+        "parsed_arguments": [
+          {
+            "city": "Beijing"
+          }
+        ],
+        "chunks": 12
+      },
+      "all_ok": true
+    },
+    "direct_1x32k": {
+      "prompt_tokens": 32768,
+      "elapsed_s": 12.6601,
+      "cold_prefill_tps": 2588.29,
+      "meta_info": {
+        "id": "3a144d5ab4e8411a8296387cfa100c9d",
+        "finish_reason": {
+          "type": "length",
+          "length": 1
+        },
+        "prompt_tokens": 32768,
+        "weight_version": "default",
+        "num_retractions": 0,
+        "storage_prefetch_wait": 0.0,
+        "storage_staging_wait": 0.0,
+        "forward_entry_time": 1794871214.3202822,
+        "prefill_finished_time": 1794871226.934379,
+        "queue_time": 0.0031659119995310903,
+        "reasoning_tokens": 0,
+        "completion_tokens": 1,
+        "cached_tokens": 0,
+        "weight_versions": [
+          {
+            "version": "default",
+            "start": 0,
+            "end": 1
+          }
+        ],
+        "cached_tokens_details": null,
+        "dp_rank": 4,
+        "e2e_latency": 12.633572817998356,
+        "request_received_ts": 1794871214.3051777,
+        "first_token_latency": 12.629201369738439,
+        "api_server_dispatch_finish_ts": 1794871214.3059871,
+        "request_finished_ts": 1794871226.9387505,
+        "other_queue": 0.0031659119995310903,
+        "prefill_latency": 12.614096879959106,
+        "response_sent_to_client_ts": 1794871226.939388
+      }
+    },
+    "bench_32k1k": {
+      "1": {
+        "concurrency": 1,
+        "round": 0,
+        "requests": 1,
+        "success": 1,
+        "errors": [],
+        "prefill_success": 1,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 32790,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 10579.81,
+        "p50_cold_ttft_s": 3.099,
+        "p95_cold_ttft_s": 3.099,
+        "input_tokens": 32793,
+        "output_tokens": 1024,
+        "decode_cached_tokens": 32512,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 192.56,
+        "decode_window_tps": 200.61,
+        "verify_steps": 265,
+        "accept_tokens_per_step_est": 3.864,
+        "mean_request_ms_per_step_est": 19.262,
+        "sum_request_decode_tps_est": 200.41,
+        "p50_ttft_s": 0.212,
+        "p95_ttft_s": 0.212,
+        "p50_tpot_ms": 4.99,
+        "p95_tpot_ms": 4.99
+      },
+      "64": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 2098560,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 25547.82,
+        "p50_cold_ttft_s": 46.702,
+        "p95_cold_ttft_s": 82.008,
+        "input_tokens": 2098752,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 2080768,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 4620.1,
+        "decode_window_tps": 4693.27,
+        "verify_steps": 12306,
+        "accept_tokens_per_step_est": 5.326,
+        "mean_request_ms_per_step_est": 51.474,
+        "sum_request_decode_tps_est": 6682.78,
+        "p50_ttft_s": 1.237,
+        "p95_ttft_s": 1.301,
+        "p50_tpot_ms": 9.245,
+        "p95_tpot_ms": 12.401
+      }
+    },
+    "real_short_64": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "input_tokens": 2400,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 0,
+      "decode_cached_pct": 0.0,
+      "successful_output_tps": 3285.48,
+      "decode_window_tps": 3318.59,
+      "verify_steps": 19900,
+      "accept_tokens_per_step_est": 3.293,
+      "mean_request_ms_per_step_est": 48.313,
+      "sum_request_decode_tps_est": 4595.46,
+      "p50_ttft_s": 0.555,
+      "p95_ttft_s": 0.591,
+      "p50_tpot_ms": 15.133,
+      "p95_tpot_ms": 18.718,
+      "prefill_window_tps_est": 3888.53
+    },
+    "independent_64x128k": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "prefill_success": 64,
+      "prefill_errors": [],
+      "cold_prefill_input_tokens": 8390016,
+      "cold_prefill_cached_tokens": 0,
+      "prefill_window_tps_est": 25755.51,
+      "p50_cold_ttft_s": 183.905,
+      "p95_cold_ttft_s": 325.165,
+      "input_tokens": 8390016,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 8372224,
+      "decode_cached_pct": 99.79,
+      "successful_output_tps": 3501.3,
+      "decode_window_tps": 3665.07,
+      "verify_steps": 19559,
+      "accept_tokens_per_step_est": 3.351,
+      "mean_request_ms_per_step_est": 49.753,
+      "sum_request_decode_tps_est": 4316.4,
+      "p50_ttft_s": 1.526,
+      "p95_ttft_s": 2.499,
+      "p50_tpot_ms": 14.822,
+      "p95_tpot_ms": 16.01
+    },
+    "mixed_64_plus_2x300k": {
+      "options": {
+        "out": "/data/bench/align/sd-popt5-s1234-mixed.json",
+        "dp_ranks": 8,
+        "decode_clients": 64,
+        "long_requests": 2,
+        "context_tokens": 300000,
+        "initial_output": 2048,
+        "request_timeout": 3600,
+        "case_id": "tp8-mixed-20261115"
+      },
+      "summary": {
+        "error": null,
+        "decode_clients": 64,
+        "long_requests": 2,
+        "long_ttft_s": [
+          85.25423282299744,
+          85.22722828100086
+        ],
+        "worker_errors": [],
+        "window_s": 85.98593793200416,
+        "decode_output_tokens_during_window": 216316,
+        "decode_clients_streaming_at_insert": 64,
+        "decode_aggregate_tps": 2515.7136760089547,
+        "decode_per_client_tps": 39.30802618763992,
+        "overlapping_request_tpot_p50_ms": 14.334028063018492,
+        "overlapping_request_tpot_p95_ms": 29.178626347992196,
+        "stream_tpot_p50_ms": 11.235683333021976,
+        "stream_tpot_p95_ms": 101.49677016670466,
+        "stream_gap_p95_ms": 403.7594499968691,
+        "stream_gap_max_ms": 754.6416990007856
+      },
+      "window_start": 49977.483915093,
+      "window_end": 50063.469853025
+    },
+    "ppl_3seg": {
+      "tag": "sd-popt5-s1234",
+      "rows": [
+        {
+          "corpus": "code",
+          "seg": 0,
+          "n": 4095,
+          "nll": 0.5837495231831781
+        },
+        {
+          "corpus": "code",
+          "seg": 1,
+          "n": 4095,
+          "nll": 0.5458822018032328
+        },
+        {
+          "corpus": "code",
+          "seg": 2,
+          "n": 4095,
+          "nll": 1.04977281898772
+        }
+      ],
+      "summary": {
+        "code": {
+          "segments": 3,
+          "nll": 0.72647,
+          "ppl": 2.0678
+        },
+        "all": {
+          "segments": 3,
+          "nll": 0.72647,
+          "ppl": 2.0678
+        }
+      }
+    }
+  },
+  "sd_popt5_s1234_profiles": {
+    "decode_shared_rank0_top15": [
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 640u, 5120u>, Shape<16u, 128u, 256u>, Shape<16u, 32u, 128u>, Shape<0u, 64u, 0u>, FloatingPointType<8u, 3u, 4u>, Flo",
+        "calls": 200,
+        "sum_us": 43771.94
+      },
+      {
+        "name": "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 215,
+        "sum_us": 34442.83
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 230,
+        "sum_us": 34023.65
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<16u, 256u, 128u>, Shape<16u, 64u, 128u>, Shape<0u, 0u, 96u>, FloatingPointType<8u, 3u, 4u>, Flo",
+        "calls": 215,
+        "sum_us": 24434.87
+      },
+      {
+        "name": "void flashinfer::sparse_mla_sm120::repair_a2::sparse_mla_decode_dsv41_bf16_fp32mid_kernel<64, true, (ModelType)6>(__nv_bfloat16 const*, unsigned char ",
+        "calls": 190,
+        "sum_us": 15149.26
+      },
+      {
+        "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1409601_TVLayoutDst",
+        "calls": 470,
+        "sum_us": 14372.28
+      },
+      {
+        "name": "ncclDevKernel_SendRecv(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 10,
+        "sum_us": 9319.71
+      },
+      {
+        "name": "_einsum_kernel",
+        "calls": 215,
+        "sum_us": 9153.26
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_32_128false9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5",
+        "calls": 215,
+        "sum_us": 8552.58
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_64_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5t",
+        "calls": 215,
+        "sum_us": 7913.12
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm55DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_128_128false9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute",
+        "calls": 215,
+        "sum_us": 5462.17
+      },
+      {
+        "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x64_64x3_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x64_64x3_t",
+        "calls": 5,
+        "sum_us": 5427.88
+      },
+      {
+        "name": "_hc_mix_stats_partial_kernel",
+        "calls": 430,
+        "sum_us": 4686.15
+      },
+      {
+        "name": "_fp4_index_logits_paged_balanced_kernel",
+        "calls": 25,
+        "sum_us": 4005.97
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN2at4cuda6detail34enable_3x_kernel_for_sm10_or_laterINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiEEENS5_10collective13C",
+        "calls": 5,
+        "sum_us": 2855.77
+      }
+    ],
+    "prefill_rank0_top15": [
+      {
+        "name": "void flashinfer::sparse_mla_sm120::kernels::dsv41_bf16::sparse_mla_prefill_dsv41_bf16_kernel<64, true, (ModelType)6>(flashinfer::sparse_mla_sm120::exe",
+        "calls": 114,
+        "sum_us": 749141.09
+      },
+      {
+        "name": "ncclDevKernel_Reduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 120,
+        "sum_us": 350125.9
+      },
+      {
+        "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_TVLayoutDst",
+        "calls": 72,
+        "sum_us": 218569.64
+      },
+      {
+        "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x128_32x3_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x128_32x3",
+        "calls": 60,
+        "sum_us": 211158.4
+      },
+      {
+        "name": "ncclDevKernel_Broadcast_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 129,
+        "sum_us": 131351.27
+      },
+      {
+        "name": "_hc_mix_stats_partial_kernel",
+        "calls": 240,
+        "sum_us": 115077.83
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_64_128false9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5",
+        "calls": 80,
+        "sum_us": 104444.89
+      },
+      {
+        "name": "mhc_post_tilelang_kernel",
+        "calls": 120,
+        "sum_us": 88040.02
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_128_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5",
+        "calls": 64,
+        "sum_us": 74911.29
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<96u, 256u, 128u>, Shape<48u, 64u, 128u>, Shape<0u, 0u, 96u>, FloatingPointType<8u, 3u, 4u>, Flo",
+        "calls": 60,
+        "sum_us": 60362.94
+      },
+      {
+        "name": "_hc_combine_norm_prefill",
+        "calls": 120,
+        "sum_us": 54486.5
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 640u, 5120u>, Shape<64u, 128u, 256u>, Shape<64u, 32u, 128u>, Shape<0u, 64u, 0u>, FloatingPointType<8u, 3u, 4u>, Flo",
+        "calls": 40,
+        "sum_us": 52248.44
+      },
+      {
+        "name": "moe_fused_mul_sum_kernel",
+        "calls": 120,
+        "sum_us": 37717.73
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm53DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_64_128true9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5t",
+        "calls": 62,
+        "sum_us": 28047.81
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 640u, 5120u>, Shape<32u, 128u, 256u>, Shape<32u, 32u, 128u>, Shape<0u, 64u, 0u>, FloatingPointType<8u, 3u, 4u>, Flo",
+        "calls": 60,
+        "sum_us": 27099.25
+      }
+    ]
+  }
+}

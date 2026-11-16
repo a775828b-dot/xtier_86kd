@@ -228,6 +228,7 @@ def install_onto_humming_utils(hu_mod) -> None:
         return
 
     mxmma_mode = os.environ.get("XTIER_PREFILL_MOE_MXMMA", "").strip().lower()
+    draft_mxmma_mode = os.environ.get("XTIER_DRAFT_MOE_MXMMA", mxmma_mode).strip().lower()
     pad_n_s = os.environ.get("XTIER_MOE_PAD_N", "").strip()
     pad_k_s = os.environ.get("XTIER_MOE_PAD_K", "").strip()
     pad_n = int(pad_n_s) if pad_n_s else None
@@ -238,8 +239,10 @@ def install_onto_humming_utils(hu_mod) -> None:
     draft_pad_n = int(draft_pad_n_s) if draft_pad_n_s else None
     draft_pad_k = int(draft_pad_k_s) if draft_pad_k_s else None
 
+    valid_mxmma = ("e3m4", "float8e3m4", "e4m3", "float8e4m3")
     if (
-        mxmma_mode not in ("e3m4", "float8e3m4", "e4m3", "float8e4m3")
+        mxmma_mode not in valid_mxmma
+        and draft_mxmma_mode not in valid_mxmma
         and pad_n is None
         and pad_k is None
         and draft_pad_n is None
@@ -264,8 +267,9 @@ def install_onto_humming_utils(hu_mod) -> None:
         num_experts = getattr(layer, "num_local_experts", 0)
         is_target_moe = num_experts == 384
         is_draft_moe = num_experts == 128
-        if is_target_moe and mxmma_mode in ("e3m4", "float8e3m4", "e4m3", "float8e4m3"):
-            a_dt = "float8e3m4" if mxmma_mode in ("e3m4", "float8e3m4") else "float8e4m3"
+        active_mxmma = mxmma_mode if is_target_moe else (draft_mxmma_mode if is_draft_moe else "")
+        if active_mxmma in valid_mxmma:
+            a_dt = "float8e3m4" if active_mxmma in ("e3m4", "float8e3m4") else "float8e4m3"
             input_schema = HummingInputSchema.from_config({
                 "a_dtype": a_dt,
                 "input_scale_group_size": 32,
