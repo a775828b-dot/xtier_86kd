@@ -315,24 +315,46 @@ def _replay_tail(original, cls, model, *args, **kwargs):
     return original(cls, model, *args, **kwargs)
 
 
-@functools.lru_cache
-def _b12x_rows():
-    if torch.cuda.get_device_capability()[0] != 12:
-        return frozenset()
+def _parse_row_spec(spec: str) -> frozenset[int]:
     rows = set()
-    for part in os.environ.get('XTIER_MXFP8_B12X_ROWS', '1-24').split(','):   # counts and ranges: 5,10-12
+    for part in spec.split(','):
         first, _, last = part.strip().partition('-')
         if first:
             rows.update(range(int(first), int(last or first) + 1))
     return frozenset(rows)
 
 
+@functools.lru_cache
+def _b12x_rows():
+    if torch.cuda.get_device_capability()[0] != 12:
+        return frozenset()
+    # Narrow-N shapes (N < 16384): b12x wins for M <= 16 (up to 1.50x), while
+    # 128x128x128 CUTLASS wins at M >= 24.
+    return _parse_row_spec(os.environ.get('XTIER_MXFP8_B12X_ROWS', '1-16'))
+
+
+@functools.lru_cache
+def _b12x_wide_rows():
+    if torch.cuda.get_device_capability()[0] != 12:
+        return frozenset()
+    # Wide-N shapes (N >= 16384, e.g. attn.wq_b N=32768 and engram.wkv N=25600):
+    # b12x is 100% bitwise equal and 1.19x-1.51x faster all the way through M=64
+    # (covering 64-way DP8 decode T=40 draft and T=48 target verify).
+    return _parse_row_spec(os.environ.get('XTIER_MXFP8_B12X_WIDE_ROWS', '1-64'))
+
+
+_B12X_WIDE_N = int(os.environ.get('XTIER_MXFP8_B12X_WIDE_N', '16384'))
+
+
 def _mxfp8_linear(original, input, *args, **kwargs):
     # TP8 Humming uses expert down projections with K=288; FlashInfer's b12x
     # requires a full 128-wide K tile. Leave those projections on CUTLASS.
-    if (kwargs.get('backend', 'cutlass') == 'cutlass' and input.shape[-1] % 128 == 0
-            and input.numel() // input.shape[-1] in _b12x_rows()):
-        kwargs['backend'] = 'b12x'
+    if kwargs.get('backend', 'cutlass') == 'cutlass' and input.shape[-1] % 128 == 0:
+        weight = args[0] if args else kwargs.get('weight')
+        n_out = weight.shape[0] if weight is not None and hasattr(weight, 'shape') else 0
+        allowed = _b12x_wide_rows() if n_out >= _B12X_WIDE_N else _b12x_rows()
+        if input.numel() // input.shape[-1] in allowed:
+            kwargs['backend'] = 'b12x'
     return original(input, *args, **kwargs)
 
 

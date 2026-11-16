@@ -16,6 +16,30 @@ import os
 logger = logging.getLogger(__name__)
 _PAD_OVERRIDE: tuple[int | None, int | None] | None = None
 _LAST_GLOBAL_ACTIVE_RANKS: int = 8
+_IN_REPLAY_TAIL_DEPTH: int = 0
+
+
+def install_onto_replay_tail(rt_mod) -> None:
+    cls = getattr(rt_mod, "DecoderReplayTail", None)
+    if cls is None or getattr(cls, "_xtier_tail_depth_patched", False):
+        return
+    import functools
+
+    def _wrap_tail(fn):
+        @functools.wraps(fn)
+        def _inner(*args, **kwargs):
+            global _IN_REPLAY_TAIL_DEPTH
+            _IN_REPLAY_TAIL_DEPTH += 1
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                _IN_REPLAY_TAIL_DEPTH -= 1
+        return _inner
+
+    for mname in ("run", "run_idle", "_run_layers_eagerly"):
+        if hasattr(cls, mname):
+            setattr(cls, mname, _wrap_tail(getattr(cls, mname)))
+    cls._xtier_tail_depth_patched = True
 
 
 def install_onto_pynccl(pynccl_mod) -> None:
@@ -132,7 +156,7 @@ def install_onto_dp_attention(dp_mod) -> None:
     orig_dp_gather = dp_mod._dp_gather
     def _tracked_dp_gather(global_tokens, local_tokens, forward_batch, is_partial, cp_shard_counts=None):
         global _LAST_GLOBAL_ACTIVE_RANKS
-        if not torch.cuda.is_current_stream_capturing():
+        if _IN_REPLAY_TAIL_DEPTH == 0 and not torch.cuda.is_current_stream_capturing():
             sz = getattr(forward_batch, 'global_num_tokens_cpu', None)
             if sz is not None:
                 _LAST_GLOBAL_ACTIVE_RANKS = sum(1 for x in sz if x > 0)
@@ -141,7 +165,7 @@ def install_onto_dp_attention(dp_mod) -> None:
 
     def _safe_dp_gather_via_all_gatherv_fp8(global_tokens: torch.Tensor, local_real: torch.Tensor, sizes):
         global _LAST_GLOBAL_ACTIVE_RANKS
-        if not torch.cuda.is_current_stream_capturing() and sizes is not None:
+        if _IN_REPLAY_TAIL_DEPTH == 0 and not torch.cuda.is_current_stream_capturing() and sizes is not None:
             _LAST_GLOBAL_ACTIVE_RANKS = sum(1 for x in sizes if x > 0)
         rows = global_tokens.shape[0]
         hidden = global_tokens.shape[-1]

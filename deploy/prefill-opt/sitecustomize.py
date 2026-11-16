@@ -83,6 +83,9 @@ class _UnifiedFinder(importlib.abc.MetaPathFinder):
             self.targets["sglang.srt.managers.scheduler"] = (
                 lambda m: _load_local_module("_prefill_opt_isolated", "prefill_opt_hook.py").install_onto_scheduler(m)
             )
+            self.targets["sglang.srt.models.deepseek_v4_replay_tail"] = (
+                lambda m: _load_local_module("_prefill_opt_isolated", "prefill_opt_hook.py").install_onto_replay_tail(m)
+            )
 
     def find_spec(self, fullname, path=None, target_module=None):
         cb = self.targets.get(fullname)
