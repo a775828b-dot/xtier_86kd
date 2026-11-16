@@ -1,0 +1,645 @@
+{
+  "generated_at": "2026-11-17",
+  "baseline_ref_sd_dev3h_r1_p1": {
+    "global_kv_tokens": 67450880,
+    "weight_gib_per_gpu": 56.822,
+    "min_free_gib": 4.744,
+    "ppl_3seg": 2.069191,
+    "cold_prefill_32k_c1_tps": 2315.0,
+    "decode_32k_c1_tps": 275.2,
+    "cold_prefill_32k_c64_tps": 20543.0,
+    "decode_32k_c64_tps": 4214.0,
+    "cold_prefill_128k_c64_tps": 20660.0,
+    "decode_128k_c64_window_tps": 3567.0,
+    "real_short_c64_tps": 2922.0
+  },
+  "sd_popt3b_s1": {
+    "tag": "sd-popt3b-s1",
+    "capacity": {
+      "global_kv_tokens": 67450880,
+      "per_dp_kv_tokens": 8431360,
+      "per_dp_swa_tokens": 165376,
+      "weight_gib_per_gpu": 56.822,
+      "startup_available_gib": 9.997
+    },
+    "gpu_telemetry": {
+      "samples": 1200,
+      "min_free_mib": 4660.0,
+      "min_free_gib": 4.5508,
+      "min_free_ts": "2026/11/16 20:30:22.271",
+      "min_free_gpu": 1,
+      "max_used_mib": 80383.0
+    },
+    "smoke": {
+      "chinese": {
+        "ok": true,
+        "answer": "NVMe\uff08\u975e\u6613\u5931\u6027\u5185\u5b58\u4e3b\u673a\u63a7\u5236\u5668\u63a5\u53e3\u89c4\u8303\uff09\u662f\u4e00\u79cd\u4e13\u4e3a\u56fa\u6001\u786c\u76d8\u8bbe\u8ba1\u7684\u9ad8\u6027\u80fd\u3001\u4f4e\u5ef6\u8fdf\u7684\u5b58\u50a8\u8bbf\u95ee\u534f\u8bae\uff0c\u901a\u8fc7PCIe\u603b\u7ebf\u76f4\u63a5\u4e0eCPU\u901a\u4fe1\uff0c\u5927\u5e45\u63d0\u5347\u6570\u636e\u4f20\u8f93\u901f\u5ea6\u3002",
+        "usage": {
+          "prompt_tokens": 13,
+          "total_tokens": 57,
+          "completion_tokens": 44,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "code": {
+        "ok": true,
+        "answer": "# Python `add` Function\n\n```python\ndef add(a: int, b: int) -> int:\n    \"\"\"Return the sum of two integers.\"\"\"\n    return a + b\n```\n\n## Example Usage\n\n```python\nprint(add(2, 3))      # 5\nprint(add(-4, 10))    # 6\nprint(add(0, 0))      # 0\n```\n\n## Notes\n\n- The function accepts two parameters, `a` and `b`, and returns their sum.\n- Type hints (`int`) are included for clarity but are not enforced at runtime.\n- If you want to strictly validate that inputs are integers, you could add a check:\n\n```python",
+        "usage": {
+          "prompt_tokens": 16,
+          "total_tokens": 261,
+          "completion_tokens": 245,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "stream_tool": {
+        "ok": true,
+        "calls": [
+          {
+            "name": "get_weather",
+            "arguments": "{\"city\": \"Beijing\"}"
+          }
+        ],
+        "parsed_arguments": [
+          {
+            "city": "Beijing"
+          }
+        ],
+        "chunks": 12
+      },
+      "all_ok": true
+    },
+    "direct_1x32k": {
+      "prompt_tokens": 32768,
+      "elapsed_s": 13.2184,
+      "cold_prefill_tps": 2478.97,
+      "meta_info": {
+        "id": "d6bfd677233849088f629e59b3c6078d",
+        "finish_reason": {
+          "type": "length",
+          "length": 1
+        },
+        "prompt_tokens": 32768,
+        "weight_version": "default",
+        "num_retractions": 0,
+        "storage_prefetch_wait": 0.0,
+        "storage_staging_wait": 0.0,
+        "forward_entry_time": 1794860930.5595675,
+        "prefill_finished_time": 1794860943.743969,
+        "queue_time": 0.0034108489999198355,
+        "reasoning_tokens": 0,
+        "completion_tokens": 1,
+        "cached_tokens": 0,
+        "weight_versions": [
+          {
+            "version": "default",
+            "start": 0,
+            "end": 1
+          }
+        ],
+        "cached_tokens_details": null,
+        "dp_rank": 4,
+        "e2e_latency": 13.199812917002419,
+        "request_received_ts": 1794860930.5488355,
+        "first_token_latency": 13.195133463144884,
+        "api_server_dispatch_finish_ts": 1794860930.5496411,
+        "request_finished_ts": 1794860943.7486484,
+        "other_queue": 0.0034108489999198355,
+        "prefill_latency": 13.184401512145996,
+        "before_queue": 0.007321086501178797,
+        "after_prefill": 1.5497789718210697e-08,
+        "response_sent_to_client_ts": 1794860943.7492456
+      }
+    },
+    "bench_32k1k": {
+      "1": {
+        "concurrency": 1,
+        "round": 0,
+        "requests": 1,
+        "success": 1,
+        "errors": [],
+        "prefill_success": 1,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 32790,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 8618.82,
+        "p50_cold_ttft_s": 3.804,
+        "p95_cold_ttft_s": 3.804,
+        "input_tokens": 32793,
+        "output_tokens": 1024,
+        "decode_cached_tokens": 32512,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 180.01,
+        "decode_window_tps": 186.02,
+        "verify_steps": 279,
+        "accept_tokens_per_step_est": 3.67,
+        "mean_request_ms_per_step_est": 19.73,
+        "sum_request_decode_tps_est": 185.84,
+        "p50_ttft_s": 0.183,
+        "p95_ttft_s": 0.183,
+        "p50_tpot_ms": 5.381,
+        "p95_tpot_ms": 5.381
+      },
+      "64": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 2098560,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 21834.02,
+        "p50_cold_ttft_s": 54.791,
+        "p95_cold_ttft_s": 95.971,
+        "input_tokens": 2098752,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 2080768,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 4224.07,
+        "decode_window_tps": 4286.11,
+        "verify_steps": 12128,
+        "accept_tokens_per_step_est": 5.404,
+        "mean_request_ms_per_step_est": 58.166,
+        "sum_request_decode_tps_est": 5977.42,
+        "p50_ttft_s": 1.369,
+        "p95_ttft_s": 1.437,
+        "p50_tpot_ms": 10.465,
+        "p95_tpot_ms": 13.476
+      }
+    },
+    "real_short_64": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "input_tokens": 2400,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 0,
+      "decode_cached_pct": 0.0,
+      "successful_output_tps": 2924.13,
+      "decode_window_tps": 2947.6,
+      "verify_steps": 19918,
+      "accept_tokens_per_step_est": 3.29,
+      "mean_request_ms_per_step_est": 54.209,
+      "sum_request_decode_tps_est": 4095.1,
+      "p50_ttft_s": 0.551,
+      "p95_ttft_s": 0.594,
+      "p50_tpot_ms": 16.995,
+      "p95_tpot_ms": 21.153,
+      "prefill_window_tps_est": 3824.45
+    },
+    "ppl_3seg": {
+      "tag": "sd-popt3b-s1",
+      "rows": [
+        {
+          "corpus": "code",
+          "seg": 0,
+          "n": 4095,
+          "nll": 0.5872370501782762
+        },
+        {
+          "corpus": "code",
+          "seg": 1,
+          "n": 4095,
+          "nll": 0.5558513917953737
+        },
+        {
+          "corpus": "code",
+          "seg": 2,
+          "n": 4095,
+          "nll": 1.042280434360102
+        }
+      ],
+      "summary": {
+        "code": {
+          "segments": 3,
+          "nll": 0.72846,
+          "ppl": 2.0719
+        },
+        "all": {
+          "segments": 3,
+          "nll": 0.72846,
+          "ppl": 2.0719
+        }
+      }
+    }
+  },
+  "sd_popt3b_s12": {
+    "tag": "sd-popt3b-s12",
+    "capacity": {
+      "global_kv_tokens": 114348032,
+      "per_dp_kv_tokens": 14293504,
+      "per_dp_swa_tokens": 165376,
+      "weight_gib_per_gpu": 51.842,
+      "startup_available_gib": 9.988
+    },
+    "gpu_telemetry": {
+      "samples": 2056,
+      "min_free_mib": 4538.0,
+      "min_free_gib": 4.4316,
+      "min_free_ts": "2026/11/16 21:02:24.992",
+      "min_free_gpu": 4,
+      "max_used_mib": 80505.0
+    },
+    "smoke": {
+      "chinese": {
+        "ok": true,
+        "answer": "NVMe\uff08\u975e\u6613\u5931\u6027\u5185\u5b58\u4e3b\u673a\u63a7\u5236\u5668\u63a5\u53e3\u89c4\u8303\uff09\u662f\u4e00\u79cd\u4e13\u4e3a\u56fa\u6001\u786c\u76d8\uff08SSD\uff09\u8bbe\u8ba1\u7684\u9ad8\u6027\u80fd\u3001\u4f4e\u5ef6\u8fdf\u5b58\u50a8\u8bbf\u95ee\u534f\u8bae\uff0c\u901a\u8fc7PCIe\u603b\u7ebf\u76f4\u63a5\u4e0eCPU\u901a\u4fe1\uff0c\u5927\u5e45\u63d0\u5347\u6570\u636e\u4f20\u8f93\u901f\u5ea6\u3002",
+        "usage": {
+          "prompt_tokens": 13,
+          "total_tokens": 60,
+          "completion_tokens": 47,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "code": {
+        "ok": true,
+        "answer": "# Python `add` Function\n\n```python\ndef add(a: int, b: int) -> int:\n    \"\"\"Return the sum of two integers.\"\"\"\n    return a + b\n```\n\n## Example Usage\n\n```python\nprint(add(3, 5))      # 8\nprint(add(-2, 7))     # 5\nprint(add(0, 0))      # 0\n```\n\n## Notes\n\n- The function accepts two parameters, `a` and `b`, and returns their sum.\n- Type hints (`int`) are included for clarity, but Python won't enforce them at runtime \u2014 you could pass floats or other types and it would still work (e.g., `add(1.5, 2.5)`",
+        "usage": {
+          "prompt_tokens": 16,
+          "total_tokens": 244,
+          "completion_tokens": 228,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "stream_tool": {
+        "ok": true,
+        "calls": [
+          {
+            "name": "get_weather",
+            "arguments": "{\"city\": \"Beijing\"}"
+          }
+        ],
+        "parsed_arguments": [
+          {
+            "city": "Beijing"
+          }
+        ],
+        "chunks": 12
+      },
+      "all_ok": true
+    },
+    "direct_1x32k": {
+      "prompt_tokens": 32768,
+      "elapsed_s": 11.6629,
+      "cold_prefill_tps": 2809.58,
+      "meta_info": {
+        "id": "2b6ba587cc324e4ca4409a510a5fc193",
+        "finish_reason": {
+          "type": "length",
+          "length": 1
+        },
+        "prompt_tokens": 32768,
+        "weight_version": "default",
+        "num_retractions": 0,
+        "storage_prefetch_wait": 0.0,
+        "storage_staging_wait": 0.0,
+        "forward_entry_time": 1794862466.6546688,
+        "prefill_finished_time": 1794862478.2705975,
+        "queue_time": 0.0022293070069281384,
+        "reasoning_tokens": 0,
+        "completion_tokens": 1,
+        "cached_tokens": 0,
+        "weight_versions": [
+          {
+            "version": "default",
+            "start": 0,
+            "end": 1
+          }
+        ],
+        "cached_tokens_details": null,
+        "dp_rank": 4,
+        "e2e_latency": 11.629229307996866,
+        "request_received_ts": 1794862466.6455905,
+        "first_token_latency": 11.625006824404409,
+        "api_server_dispatch_finish_ts": 1794862466.6472147,
+        "request_finished_ts": 1794862478.2748199,
+        "other_queue": 0.0022293070069281384,
+        "prefill_latency": 11.615928649902344,
+        "response_sent_to_client_ts": 1794862478.2754397
+      }
+    },
+    "bench_32k1k": {
+      "1": {
+        "concurrency": 1,
+        "round": 0,
+        "requests": 1,
+        "success": 1,
+        "errors": [],
+        "prefill_success": 1,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 32790,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 8632.13,
+        "p50_cold_ttft_s": 3.799,
+        "p95_cold_ttft_s": 3.799,
+        "input_tokens": 32793,
+        "output_tokens": 1024,
+        "decode_cached_tokens": 32512,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 279.87,
+        "decode_window_tps": 296.62,
+        "verify_steps": 177,
+        "accept_tokens_per_step_est": 5.785,
+        "mean_request_ms_per_step_est": 19.504,
+        "sum_request_decode_tps_est": 296.33,
+        "p50_ttft_s": 0.206,
+        "p95_ttft_s": 0.206,
+        "p50_tpot_ms": 3.375,
+        "p95_tpot_ms": 3.375
+      },
+      "64": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 2098560,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 24850.46,
+        "p50_cold_ttft_s": 48.404,
+        "p95_cold_ttft_s": 84.329,
+        "input_tokens": 2098752,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 2080768,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 4740.5,
+        "decode_window_tps": 4822.24,
+        "verify_steps": 11850,
+        "accept_tokens_per_step_est": 5.53,
+        "mean_request_ms_per_step_est": 52.75,
+        "sum_request_decode_tps_est": 6728.75,
+        "p50_ttft_s": 1.248,
+        "p95_ttft_s": 1.318,
+        "p50_tpot_ms": 9.373,
+        "p95_tpot_ms": 11.852
+      }
+    },
+    "real_short_64": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "input_tokens": 2400,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 0,
+      "decode_cached_pct": 0.0,
+      "successful_output_tps": 3095.41,
+      "decode_window_tps": 3129.94,
+      "verify_steps": 19809,
+      "accept_tokens_per_step_est": 3.308,
+      "mean_request_ms_per_step_est": 50.902,
+      "sum_request_decode_tps_est": 4384.06,
+      "p50_ttft_s": 0.61,
+      "p95_ttft_s": 0.655,
+      "p50_tpot_ms": 15.833,
+      "p95_tpot_ms": 19.981,
+      "prefill_window_tps_est": 3474.41
+    },
+    "independent_64x128k": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "prefill_success": 64,
+      "prefill_errors": [],
+      "cold_prefill_input_tokens": 8390016,
+      "cold_prefill_cached_tokens": 0,
+      "prefill_window_tps_est": 25158.06,
+      "p50_cold_ttft_s": 187.847,
+      "p95_cold_ttft_s": 333.03,
+      "input_tokens": 8390016,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 8372224,
+      "decode_cached_pct": 99.79,
+      "successful_output_tps": 3555.88,
+      "decode_window_tps": 3671.63,
+      "verify_steps": 19488,
+      "accept_tokens_per_step_est": 3.363,
+      "mean_request_ms_per_step_est": 51.305,
+      "sum_request_decode_tps_est": 4196.76,
+      "p50_ttft_s": 1.077,
+      "p95_ttft_s": 1.866,
+      "p50_tpot_ms": 15.353,
+      "p95_tpot_ms": 16.183
+    },
+    "mixed_64_plus_2x300k": {
+      "options": {
+        "out": "/data/bench/align/sd-popt3b-s12-mixed.json",
+        "dp_ranks": 8,
+        "decode_clients": 64,
+        "long_requests": 2,
+        "context_tokens": 300000,
+        "initial_output": 2048,
+        "request_timeout": 3600,
+        "case_id": "tp8-mixed-20261115"
+      },
+      "summary": {
+        "error": null,
+        "decode_clients": 64,
+        "long_requests": 2,
+        "long_ttft_s": [
+          95.22901598000317,
+          95.19923492999806
+        ],
+        "worker_errors": [],
+        "window_s": 95.9320305259971,
+        "decode_output_tokens_during_window": 246322,
+        "decode_clients_streaming_at_insert": 64,
+        "decode_aggregate_tps": 2567.672117950719,
+        "decode_per_client_tps": 40.119876842979984,
+        "overlapping_request_tpot_p50_ms": 22.433881602152287,
+        "overlapping_request_tpot_p95_ms": 25.957734387096327,
+        "stream_tpot_p50_ms": 11.924442249437561,
+        "stream_tpot_p95_ms": 95.69288833275398,
+        "stream_gap_p95_ms": 401.6417710008682,
+        "stream_gap_max_ms": 625.1589039966348
+      },
+      "window_start": 41236.639919939,
+      "window_end": 41332.571950465
+    },
+    "ppl_3seg": {
+      "tag": "sd-popt3b-s12",
+      "rows": [
+        {
+          "corpus": "code",
+          "seg": 0,
+          "n": 4095,
+          "nll": 0.5837820750482168
+        },
+        {
+          "corpus": "code",
+          "seg": 1,
+          "n": 4095,
+          "nll": 0.5479562576781146
+        },
+        {
+          "corpus": "code",
+          "seg": 2,
+          "n": 4095,
+          "nll": 1.0529213128434578
+        }
+      ],
+      "summary": {
+        "code": {
+          "segments": 3,
+          "nll": 0.72822,
+          "ppl": 2.0714
+        },
+        "all": {
+          "segments": 3,
+          "nll": 0.72822,
+          "ppl": 2.0714
+        }
+      }
+    }
+  },
+  "sd_popt3b_s12_profiles": {
+    "decode_shared_rank0_top12": [
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 640u, 5120u>, Shape<16u, 128u, 256u>, Shape<16u, 32u, 128u>, Shape<0u, 64u, 0u>, FloatingPointType<8u, 3u",
+        "calls": 200,
+        "sum_us": 44884.61
+      },
+      {
+        "name": "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 215,
+        "sum_us": 34660.76
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 230,
+        "sum_us": 34401.08
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<16u, 256u, 128u>, Shape<16u, 64u, 128u>, Shape<0u, 0u, 96u>, FloatingPointType<8u, 3u",
+        "calls": 200,
+        "sum_us": 23093.4
+      },
+      {
+        "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1409601_T",
+        "calls": 685,
+        "sum_us": 22713.14
+      },
+      {
+        "name": "void flashinfer::sparse_mla_sm120::repair_a2::sparse_mla_decode_dsv41_bf16_fp32mid_kernel<64, true, (ModelType)6>(__nv_bfloat16 const*, unsi",
+        "calls": 190,
+        "sum_us": 15122.03
+      },
+      {
+        "name": "_dequant_kernel",
+        "calls": 200,
+        "sum_us": 11529.25
+      },
+      {
+        "name": "ncclDevKernel_SendRecv(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 10,
+        "sum_us": 9172.76
+      },
+      {
+        "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_T",
+        "calls": 250,
+        "sum_us": 7742.42
+      },
+      {
+        "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x6",
+        "calls": 215,
+        "sum_us": 6445.09
+      },
+      {
+        "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x64_64x3_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128",
+        "calls": 5,
+        "sum_us": 5425.39
+      },
+      {
+        "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm55DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_128_128false9Sm12xOnlyINS_4gemm6kernel13GemmUniver",
+        "calls": 215,
+        "sum_us": 5331.95
+      }
+    ],
+    "prefill_rank0_top12": [
+      {
+        "name": "void flashinfer::sparse_mla_sm120::kernels::dsv41_bf16::sparse_mla_prefill_dsv41_bf16_kernel<64, true, (ModelType)6>(flashinfer::sparse_mla_",
+        "calls": 304,
+        "sum_us": 771629.51
+      },
+      {
+        "name": "ncclDevKernel_Reduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 320,
+        "sum_us": 458685.8
+      },
+      {
+        "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_T",
+        "calls": 848,
+        "sum_us": 327295.74
+      },
+      {
+        "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x128_32x3_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_25",
+        "calls": 160,
+        "sum_us": 144036.78
+      },
+      {
+        "name": "_hc_mix_stats_partial_kernel",
+        "calls": 640,
+        "sum_us": 126402.5
+      },
+      {
+        "name": "ncclDevKernel_Broadcast_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "calls": 344,
+        "sum_us": 113515.92
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 640u, 5120u>, Shape<48u, 128u, 256u>, Shape<48u, 32u, 128u>, Shape<0u, 64u, 0u>, FloatingPointType<8u, 3u",
+        "calls": 160,
+        "sum_us": 91332.65
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<80u, 256u, 128u>, Shape<80u, 32u, 128u>, Shape<0u, 0u, 96u>, FloatingPointType<8u, 3u",
+        "calls": 160,
+        "sum_us": 78913.17
+      },
+      {
+        "name": "mhc_post_tilelang_kernel",
+        "calls": 320,
+        "sum_us": 75519.3
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 640u, 5120u>, Shape<32u, 128u, 256u>, Shape<32u, 32u, 128u>, Shape<0u, 64u, 0u>, FloatingPointType<8u, 3u",
+        "calls": 160,
+        "sum_us": 71790.18
+      },
+      {
+        "name": "_hc_combine_norm_prefill",
+        "calls": 320,
+        "sum_us": 55774.75
+      },
+      {
+        "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<32u, 256u, 128u>, Shape<32u, 64u, 128u>, Shape<0u, 0u, 96u>, FloatingPointType<8u, 3u",
+        "calls": 160,
+        "sum_us": 41461.58
+      }
+    ]
+  }
+}
