@@ -1,0 +1,96 @@
+{
+  "status": "measured",
+  "rows": [
+    {
+      "test": "device_to_device_memcpy_write_ce",
+      "description": "memcpy CE GPU(row) <- GPU(column) bandwidth (GB/s)",
+      "sha256": "d4b42b2fdbb093c9f3e22a2b6fcbdcdc6caa10c44f788409027cf90426b60949",
+      "units": "GB/s",
+      "same_socket": {
+        "pairs": 24,
+        "min": 40.8205,
+        "median": 40.9053,
+        "max": 41.4706
+      },
+      "cross_socket": {
+        "pairs": 32,
+        "min": 34.6796,
+        "median": 37.9103,
+        "max": 39.2532
+      }
+    },
+    {
+      "test": "device_to_device_memcpy_read_ce",
+      "description": "memcpy CE GPU(row) -> GPU(column) bandwidth (GB/s)",
+      "sha256": "eaf1a7c3615e952e35392464997329074b13624dba546932a495adcc6240ad3d",
+      "units": "GB/s",
+      "same_socket": {
+        "pairs": 24,
+        "min": 40.773,
+        "median": 40.8424,
+        "max": 41.4172
+      },
+      "cross_socket": {
+        "pairs": 32,
+        "min": 34.6356,
+        "median": 37.9987,
+        "max": 39.3249
+      }
+    },
+    {
+      "test": "device_to_device_memcpy_write_sm",
+      "description": "memcpy SM GPU(row) <- GPU(column) bandwidth (GB/s)",
+      "sha256": "cc2b3fdd45adefdb92a568fe58bba2e25352606048db4daab3b64cbd1a3d6dc8",
+      "units": "GB/s",
+      "same_socket": {
+        "pairs": 24,
+        "min": 31.0754,
+        "median": 31.1294,
+        "max": 31.5342
+      },
+      "cross_socket": {
+        "pairs": 32,
+        "min": 27.2576,
+        "median": 29.759999999999998,
+        "max": 30.9384
+      }
+    },
+    {
+      "test": "device_to_device_memcpy_read_sm",
+      "description": "memcpy SM GPU(row) -> GPU(column) bandwidth (GB/s)",
+      "sha256": "86d4043ef975539e4330b4c66665c61fd7d78dc94e02fb2d4f3edb6bc5cdcd26",
+      "units": "GB/s",
+      "same_socket": {
+        "pairs": 24,
+        "min": 41.8782,
+        "median": 42.055499999999995,
+        "max": 42.8922
+      },
+      "cross_socket": {
+        "pairs": 32,
+        "min": 40.3069,
+        "median": 41.4974,
+        "max": 42.1655
+      }
+    },
+    {
+      "test": "device_to_device_latency_sm",
+      "description": "Device to Device Latency SM GPU(row) <-> GPU(column) (ns)",
+      "sha256": "5f7c73a4be081ce842ec84226b3de53baad56e9c3974a1a1c08173efc8fa5fc4",
+      "units": "ns",
+      "same_socket": {
+        "pairs": 24,
+        "min": 1531.85,
+        "median": 1951.08,
+        "max": 1981.4
+      },
+      "cross_socket": {
+        "pairs": 32,
+        "min": 1775.07,
+        "median": 1976.4650000000001,
+        "max": 2218.8
+      }
+    }
+  ],
+  "note": "Median across directed pairs, each pair measured by nvbandwidth with5 samples. Single-pair tests, not simultaneous all-pairs or NCCL aggregate; not CPU STREAM."
+}

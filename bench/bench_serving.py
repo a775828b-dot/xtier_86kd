@@ -25,6 +25,9 @@ parser.add_argument('--port', type=int, default=30000)
 parser.add_argument('--host', default='127.0.0.1')
 parser.add_argument('--model', default='DeepSeek-V4.1-Flash-1017')
 parser.add_argument('--api-key-file')
+parser.add_argument('--admin-host', default=None)
+parser.add_argument('--admin-port', type=int, default=None)
+parser.add_argument('--admin-api-key-file', default=None)
 parser.add_argument('--concurrencies', default='1,20,64')
 parser.add_argument('--rounds', type=int, default=2)
 parser.add_argument('--two-phase', action='store_true',
@@ -40,8 +43,11 @@ parser.add_argument('--out', default='/data/bench/serving-64.json')
 args = parser.parse_args()
 run_id = uuid.uuid4().hex[:12]
 key = open(args.api_key_file).read().strip() if args.api_key_file else None
+admin_key = open(args.admin_api_key_file).read().strip() if args.admin_api_key_file else key
 url = f'http://{args.host}:{args.port}/v1/chat/completions'
-metrics_url = f'http://{args.host}:{args.port}/metrics'
+admin_host = args.admin_host or args.host
+admin_port = args.admin_port or args.port
+metrics_url = f'http://{admin_host}:{admin_port}/metrics'
 long_prompt = ''
 if args.prompt_tokens:
     from transformers import AutoTokenizer
@@ -59,7 +65,7 @@ def percentile(values, fraction):
 
 
 def verify_calls():
-    headers = {'Authorization': f'Bearer {key}'} if key else {}
+    headers = {'Authorization': f'Bearer {admin_key}'} if admin_key else {}
     request = urllib.request.Request(metrics_url, headers=headers)
     try:
         metrics = urllib.request.urlopen(request, timeout=10).read().decode()
@@ -70,8 +76,8 @@ def verify_calls():
 
 
 def flush_cache():
-    headers = {'Authorization': f'Bearer {key}'} if key else {}
-    request = urllib.request.Request(f'http://{args.host}:{args.port}/flush_cache',
+    headers = {'Authorization': f'Bearer {admin_key}'} if admin_key else {}
+    request = urllib.request.Request(f'http://{admin_host}:{admin_port}/flush_cache',
                                      headers=headers, method='POST')
     with urllib.request.urlopen(request, timeout=60) as response:
         return response.read().decode()
@@ -218,4 +224,3 @@ for concurrency in [int(value) for value in args.concurrencies.split(',')]:
         print(json.dumps(summary, ensure_ascii=False), flush=True)
 with open(args.out, 'w') as stream:
     json.dump({'options': vars(args), 'rounds': rows}, stream, indent=2, ensure_ascii=False)
-

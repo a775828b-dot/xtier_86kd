@@ -1,0 +1,521 @@
+--- a/python/sglang/kernels/ops/attention/dsv4/fp4_indexer.py
++++ b/python/sglang/kernels/ops/attention/dsv4/fp4_indexer.py
+@@ -4,6 +4,8 @@
+ import triton
+ import triton.language as tl
+ from triton.language.extra import libdevice
++
++from sglang.srt.layers.attention.dsv4 import di_align
+ 
+ from sglang.kernels.arch import current_arch
+ from sglang.kernels.jit.utils import aligned_new_empty
+@@ -11,6 +13,8 @@
+ from sglang.kernels.ops.quantization.fp4_fake_quant import FP4_AMAX_FLOOR
+ from sglang.kernels.ops.quantization.fp4_indexer_quant import (
+     _ceil_ue8m0_exp,
++    _di_fp4_exp,
++    _di_fp4_code,
+     _fp4_e2m1_code_rne,
+ )
+ 
+@@ -182,6 +186,7 @@
+     PAGE_SIZE: tl.constexpr,
+     CACHE_STRIDE: tl.constexpr,
+     AMAX_FLOOR: tl.constexpr,
++    ALIGN_A3: tl.constexpr,
+ ):
+     row = tl.program_id(0)
+     token = row // HEADS
+@@ -199,21 +204,26 @@
+     value = tl.where(tail, rotated.to(tl.bfloat16).to(tl.float32), value)
+ 
+     blocks = tl.reshape(value, (4, 32))
+-    amax = tl.maximum(tl.max(tl.abs(blocks), 1), AMAX_FLOOR) * (1.0 / 6.0)
+-    bits = amax.to(tl.int32, bitcast=True)
+-    exponent = ((bits >> 23) & 0xFF) + ((bits & 0x7FFFFF) != 0).to(tl.int32)
+-    fake_scale = (exponent << 23).to(tl.float32, bitcast=True)
+-    scaled = tl.minimum(tl.maximum(blocks / fake_scale[:, None], -6.0), 6.0)
+-    magnitude = tl.abs(scaled)
+-    step = tl.where(magnitude < 2.0, 0.5, tl.where(magnitude < 4.0, 1.0, 2.0))
+-    sign = tl.where(scaled > 0, 1.0, tl.where(scaled < 0, -1.0, 0.0))
+-    rounded = libdevice.rint(magnitude / step) * step * sign
+-    # Preserve the BF16 intermediate before recomputing the indexer scale.
+-    dequantized = (rounded * fake_scale[:, None]).to(tl.bfloat16).to(tl.float32)
+-    pack_amax = tl.max(tl.abs(dequantized), 1)
+-    pack_exponent = _ceil_ue8m0_exp(tl.maximum(pack_amax / 6.0, 1.0e-4))
+-    pack_scale = (pack_exponent << 23).to(tl.float32, bitcast=True)
+-    codes = _fp4_e2m1_code_rne(dequantized / pack_scale[:, None])
++    if ALIGN_A3:
++        pack_exponent = _di_fp4_exp(tl.max(tl.abs(blocks), 1))
++        pack_scale = (pack_exponent << 23).to(tl.float32, bitcast=True)
++        codes = _di_fp4_code(blocks / pack_scale[:, None])
++    else:
++        amax = tl.maximum(tl.max(tl.abs(blocks), 1), AMAX_FLOOR) * (1.0 / 6.0)
++        bits = amax.to(tl.int32, bitcast=True)
++        exponent = ((bits >> 23) & 0xFF) + ((bits & 0x7FFFFF) != 0).to(tl.int32)
++        fake_scale = (exponent << 23).to(tl.float32, bitcast=True)
++        scaled = tl.minimum(tl.maximum(blocks / fake_scale[:, None], -6.0), 6.0)
++        magnitude = tl.abs(scaled)
++        step = tl.where(magnitude < 2.0, 0.5, tl.where(magnitude < 4.0, 1.0, 2.0))
++        sign = tl.where(scaled > 0, 1.0, tl.where(scaled < 0, -1.0, 0.0))
++        rounded = libdevice.rint(magnitude / step) * step * sign
++        # Preserve the BF16 intermediate before recomputing the indexer scale.
++        dequantized = (rounded * fake_scale[:, None]).to(tl.bfloat16).to(tl.float32)
++        pack_amax = tl.max(tl.abs(dequantized), 1)
++        pack_exponent = _ceil_ue8m0_exp(tl.maximum(pack_amax / 6.0, 1.0e-4))
++        pack_scale = (pack_exponent << 23).to(tl.float32, bitcast=True)
++        codes = _fp4_e2m1_code_rne(dequantized / pack_scale[:, None])
+     low, high = tl.split(tl.reshape(codes, (64, 2)))
+     payload = low | (high << 4)
+     sf = tl.sum(pack_exponent.to(tl.uint32) << (tl.arange(0, 4) * 8), 0)
+@@ -249,6 +259,7 @@
+ 
+     Both quantization stages stay: the indexer packer has a different scale floor
+     from fake_quant_fp4, so packing the first stage directly is not equivalent.
++    A3 explicitly selects the DeepInfer single-cast semantics instead.
+     """
+     assert x.dtype == torch.bfloat16 and x.shape[-1] == 128
+     assert 0 <= rope_dim <= 128 and rope_dim % 2 == 0
+@@ -282,6 +293,7 @@
+             PAGE_SIZE=page_size,
+             CACHE_STRIDE=cache_stride,
+             AMAX_FLOOR=FP4_AMAX_FLOOR,
++            ALIGN_A3=di_align.enabled("A3"),
+             num_warps=4,
+         )
+     return (payload, scale) if cache is None else None
+--- a/python/sglang/kernels/ops/attention/dsv4/fp4_indexer_rope.py
++++ b/python/sglang/kernels/ops/attention/dsv4/fp4_indexer_rope.py
+@@ -1,4 +1,6 @@
+-"""Fused RoPE and two-stage fp4 packing for low-ratio index keys and queries.
++"""Fused RoPE and fp4 packing for low-ratio index keys and queries.
++
++A3 uses one DeepInfer cast; disabling it preserves the legacy two-stage cast.
+ 
+ Keys add RMSNorm and a 68-byte cache store and use the group's first position;
+ queries have neither and use each token's own position.
+@@ -9,6 +11,8 @@
+ from typing import TYPE_CHECKING
+ 
+ import torch
++
++from sglang.srt.layers.attention.dsv4 import di_align
+ 
+ from sglang.kernels.jit.utils import (
+     cache_once,
+@@ -26,9 +30,9 @@
+ 
+ @cache_once
+ def _jit_index_k_module(
+-    head_dim: int, rope_dim: int, page_size: int, ratio: int
++    head_dim: int, rope_dim: int, page_size: int, ratio: int, align_a3: bool
+ ) -> Module:
+-    args = make_cpp_args(head_dim, rope_dim, page_size, ratio, is_arch_support_pdl())
++    args = make_cpp_args(head_dim, rope_dim, page_size, ratio, is_arch_support_pdl(), align_a3)
+     return load_jit(
+         make_name("index_k_rope_pack"),
+         *args,
+@@ -38,8 +42,8 @@
+ 
+ 
+ @cache_once
+-def _jit_index_q_module(head_dim: int, rope_dim: int) -> Module:
+-    args = make_cpp_args(head_dim, rope_dim, is_arch_support_pdl())
++def _jit_index_q_module(head_dim: int, rope_dim: int, align_a3: bool) -> Module:
++    args = make_cpp_args(head_dim, rope_dim, is_arch_support_pdl(), align_a3)
+     return load_jit(
+         make_name("index_q_rope_pack"),
+         *args,
+@@ -61,7 +65,7 @@
+     *,
+     ratio: int,
+ ) -> None:
+-    """Normalize, rotate, quantize twice and store one index-K slot per token.
++    """Normalize, rotate, quantize and store one index-K slot per token.
+ 
+     :param input: ``[num_tokens, index_head_dim]`` bf16 -- ``wk(latent)``,
+                   *before* ``k_norm``.
+@@ -77,14 +81,14 @@
+     :param cache: the layer's index-K buffer, ``[npages, page_size * 68]`` uint8.
+     :param ratio: the layer's compress ratio. A power of two.
+ 
+-    .. note:: Two quantization stages, not one. The fake-quant's amax floor is
++    .. note:: With A3 disabled there are two stages. The fake-quant's amax floor is
+        ``6 * 2**-126`` and the packer's is ``1e-4``, applied on opposite sides
+        of the divide by 6, so the packer can recover an exponent the fake-quant
+        gave away and collapsing them is not equivalent.
+     """
+     head_dim = input.shape[-1]
+     _jit_index_k_module(
+-        head_dim, freqs_cis.shape[-1], cache.shape[1] // INDEX_K_SLOT_BYTES, ratio
++        head_dim, freqs_cis.shape[-1], cache.shape[1] // INDEX_K_SLOT_BYTES, ratio, di_align.enabled("A3")
+     ).index_k(input, norm_weight, freqs_cis, positions, loc, cache, float(eps))
+ 
+ 
+@@ -95,7 +99,7 @@
+     head_weights: torch.Tensor,
+     weight_scale: float,
+ ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+-    """Rotate, quantize twice and pack one indexer query per (token, head), plus
++    """Rotate, quantize and pack one indexer query per (token, head), plus
+     the indexer's head weights, one launch.
+ 
+     Head weights match ``head_weights(x).float()``: multiply in fp32,
+@@ -116,7 +120,7 @@
+     scale = input.new_empty((rows,), dtype=torch.int32)
+     weights = input.new_empty((num_tokens, heads), dtype=torch.float32)
+ 
+-    _jit_index_q_module(head_dim, freqs_cis.shape[-1]).index_q_weights(
++    _jit_index_q_module(head_dim, freqs_cis.shape[-1], di_align.enabled("A3")).index_q_weights(
+         input,
+         freqs_cis,
+         positions,
+--- a/python/sglang/kernels/jit/csrc/deepseek_v4/fp4_indexer_rope.cuh
++++ b/python/sglang/kernels/jit/csrc/deepseek_v4/fp4_indexer_rope.cuh
+@@ -97,6 +97,7 @@
+ /// A 32-element fp4 block is 16 lanes of *one* half -- blocks 0/1 are the head
+ /// on lanes 0-15 / 16-31 and blocks 2/3 the tail -- so each quantization stage
+ /// costs two `reduce_max<16>`, not four, and nothing here spans the row.
++template <bool kAlignA3>
+ SGL_DEVICE IndexPacked index_rope_quant_pack(fp32x2_t head, fp32x2_t tail, fp32x2_t freq) {
+   using namespace device;
+   namespace fp4 = deepseek_v4::fp4;
+@@ -114,6 +115,7 @@
+   data[2] = rotated.x;
+   data[3] = rotated.y;
+ 
++  if constexpr (!kAlignA3) {
+   // The fake-quant result is already exact in bf16: e2m1 needs at most three
+   // significant bits, and the power-of-two scales admitted by the amax floor fit bf16.
+ #pragma unroll
+@@ -125,13 +127,21 @@
+     data[half * 2 + 1] = q.y;
+   }
+ 
++  }
++
+   // The packer's scale floor differs from fake quantization; keep both stages.
+   // Each packed byte puts `.x` in the low nibble.
+   IndexPacked out;
+ #pragma unroll
+   for (uint32_t half = 0; half < 2; ++half) {
+     const auto amax = warp::reduce_max<kHalfLanes>(fmaxf(fabsf(data[half * 2]), fabsf(data[half * 2 + 1])));
+-    out.exponent[half] = index_pack_exponent(amax);
++    if constexpr (kAlignA3) {
++      // Exact ceil(log2(max(BF16 amax, 6*2^-126)/6)); no approximate reciprocal.
++      const auto bits = __float_as_uint(fmaxf(amax, fp4::kAmaxFloor));
++      out.exponent[half] = ((bits >> 23) & 0xffu) - 2u + ((bits & 0x7fffffu) > 0x400000u);
++    } else {
++      out.exponent[half] = index_pack_exponent(amax);
++    }
+     // `inv_scale_ue8m0` instead of the reference's division: the scale is a
+     // power of two, so both are exact except at the unreachable exponent 254.
+     const auto inv_scale = deepseek_v4::fp8::inv_scale_ue8m0(static_cast<int32_t>(out.exponent[half]));
+@@ -141,7 +151,7 @@
+ #else
+     const auto code = fp4::e2m1x2_code(fp32x2_t{data[half * 2] * inv_scale, data[half * 2 + 1] * inv_scale});
+ #endif
+-    out.payload[half] = clear_negative_zero(static_cast<uint32_t>(code));
++    out.payload[half] = kAlignA3 ? static_cast<uint32_t>(code) : clear_negative_zero(static_cast<uint32_t>(code));
+   }
+   return out;
+ }
+@@ -170,7 +180,7 @@
+ /// Lane L owns head elements {2L, 2L+1} and tail elements {64+2L, 64+2L+1},
+ /// so each lane carries one complex RoPE pair. Only RMSNorm spans the full
+ /// row; the remaining reductions use the FP4 block layout.
+-template <bool kUsePDL, int64_t kHeadDim, int64_t kRopeDim, uint32_t kPageSize, uint32_t kRatio, typename PosT>
++template <bool kUsePDL, int64_t kHeadDim, int64_t kRopeDim, uint32_t kPageSize, uint32_t kRatio, typename PosT, bool kAlignA3>
+ __global__ __launch_bounds__(kFp4RopeWarpsPerCTA* device::kWarpThreads) void index_k_kernel(const IndexKParams params) {
+   using namespace device;
+   namespace fp4 = deepseek_v4::fp4;
+@@ -222,7 +232,7 @@
+     tail = cast<fp32x2_t>(cast<bf16x2_t>(fp32x2_t{wt0 * (t0 * inv_rms), wt1 * (t1 * inv_rms)}));
+   }
+ 
+-  const auto packed = index_rope_quant_pack(head, tail, fp32x2_t{freq[0], freq[1]});
++  const auto packed = index_rope_quant_pack<kAlignA3>(head, tail, fp32x2_t{freq[0], freq[1]});
+   const auto scale_word = index_scale_word(packed.exponent);
+ 
+   // A padded graph row, and at ratio > 1 a row completing no group, carry the
+@@ -247,7 +257,7 @@
+ ///
+ /// Input is contiguous [num_tokens, heads, kHeadDim]; row r uses token r / heads
+ /// and head r % heads.
+-template <bool kUsePDL, int64_t kHeadDim, int64_t kRopeDim, typename PosT, bool kWeights>
++template <bool kUsePDL, int64_t kHeadDim, int64_t kRopeDim, typename PosT, bool kWeights, bool kAlignA3>
+ __global__ __launch_bounds__(kFp4RopeWarpsPerCTA* device::kWarpThreads) void index_q_kernel(const IndexQParams params) {
+   using namespace device;
+ 
+@@ -277,7 +287,7 @@
+   freq.load(params.freqs_cis + position * kRopeDim, lane);
+ 
+   const auto packed =
+-      index_rope_quant_pack(cast<fp32x2_t>(head_in[0]), cast<fp32x2_t>(tail_in[0]), fp32x2_t{freq[0], freq[1]});
++      index_rope_quant_pack<kAlignA3>(cast<fp32x2_t>(head_in[0]), cast<fp32x2_t>(tail_in[0]), fp32x2_t{freq[0], freq[1]});
+   const auto scale_word = index_scale_word(packed.exponent);
+ 
+   const auto payload_ptr = params.payload + row * kPayloadBytes;
+@@ -333,7 +343,7 @@
+ /// computes the same bytes with no shuffles. Warps 0-3 of a CTA take the head
+ /// blocks of its 64 rows and warps 4-7 the RoPE blocks, so the RoPE branch is
+ /// warp-uniform; each thread issues all of its loads before any math.
+-template <bool kUsePDL, int64_t kHeadDim, int64_t kRopeDim, typename PosT, bool kWeights>
++template <bool kUsePDL, int64_t kHeadDim, int64_t kRopeDim, typename PosT, bool kWeights, bool kAlignA3>
+ __global__ __launch_bounds__(kIndexQBlockThreads) void index_q_block_kernel(const IndexQParams params) {
+   using namespace device;
+   namespace fp4 = deepseek_v4::fp4;
+@@ -393,6 +403,13 @@
+     }
+   }
+ 
++  uint32_t exponent;
++  float factor;
++  if constexpr (kAlignA3) {
++    const auto bits = __float_as_uint(fmaxf(index_block_absmax(v), fp4::kAmaxFloor));
++    exponent = ((bits >> 23) & 0xffu) - 2u + ((bits & 0x7fffffu) > 0x400000u);
++    factor = deepseek_v4::fp8::inv_scale_ue8m0(static_cast<int32_t>(exponent));
++  } else {
+   // `fp4::fake_quant_x2` up to its final `* scale`: v becomes the e2m1 grid value.
+   const auto [scale, inv_scale] = fp4::block_scale(index_block_absmax(v));
+ #pragma unroll
+@@ -405,8 +422,10 @@
+   }
+   // The fake-quant value is grid * scale and both scales are powers of two, so
+   // (grid * scale) * pack_inv_scale == grid * (scale * pack_inv_scale) exactly.
+-  const auto exponent = index_pack_exponent_grid(__fmul_rn(index_block_absmax(v), scale));
+-  const auto factor = __fmul_rn(scale, deepseek_v4::fp8::inv_scale_ue8m0(static_cast<int32_t>(exponent)));
++  exponent = index_pack_exponent_grid(__fmul_rn(index_block_absmax(v), scale));
++  factor = __fmul_rn(scale, deepseek_v4::fp8::inv_scale_ue8m0(static_cast<int32_t>(exponent)));
++
++  }
+ 
+   using out_vec_t = AlignedVector<uint32_t, 4>;
+   out_vec_t out;
+@@ -420,7 +439,7 @@
+           fp32x2_t{__fmul_rn(v[i], factor), __fmul_rn(v[i + 1], factor)}, __NV_E2M1, cudaRoundNearest);
+       word |= (static_cast<uint32_t>(code) & 0xFFu) << (b * 8);
+     }
+-    out[w] = clear_negative_zero(word);
++    out[w] = kAlignA3 ? word : clear_negative_zero(word);
+   }
+   out.store(params.payload + static_cast<int64_t>(row) * (kHeadDim / 2) + blk * (kBlock / 2));
+   reinterpret_cast<uint8_t*>(params.scale)[static_cast<int64_t>(row) * kBlocksPerRow + blk] =
+@@ -437,13 +456,13 @@
+ #endif  // USE_ROCM
+ 
+ /// \brief Host side of `index_k_kernel`.
+-template <int64_t kHeadDim, int64_t kRopeDim, uint32_t kPageSize, uint32_t kRatio, bool kUsePDL>
++template <int64_t kHeadDim, int64_t kRopeDim, uint32_t kPageSize, uint32_t kRatio, bool kUsePDL, bool kAlignA3>
+ struct IndexKKernel {
+   static constexpr uint32_t kBlockSize = kFp4RopeWarpsPerCTA * device::kWarpThreads;
+   static constexpr int64_t kSlotBytes = kHeadDim / 2 + kHeadDim / deepseek_v4::fp4::kBlockSize;
+ 
+   template <typename PosT>
+-  static constexpr auto kernel = index_k_kernel<kUsePDL, kHeadDim, kRopeDim, kPageSize, kRatio, PosT>;
++  static constexpr auto kernel = index_k_kernel<kUsePDL, kHeadDim, kRopeDim, kPageSize, kRatio, PosT, kAlignA3>;
+ 
+   /// \param input `[num_tokens, kHeadDim]` bf16, `wk(latent)` before `k_norm`.
+   /// \param norm_weight `[kHeadDim]` bf16, `k_norm.weight`.
+@@ -497,15 +516,15 @@
+ };
+ 
+ /// \brief Host side of `index_q_kernel`.
+-template <int64_t kHeadDim, int64_t kRopeDim, bool kUsePDL>
++template <int64_t kHeadDim, int64_t kRopeDim, bool kUsePDL, bool kAlignA3>
+ struct IndexQKernel {
+   static constexpr uint32_t kBlockSize = kFp4RopeWarpsPerCTA * device::kWarpThreads;
+ 
+   template <typename PosT, bool kWeights>
+-  static constexpr auto kernel = index_q_kernel<kUsePDL, kHeadDim, kRopeDim, PosT, kWeights>;
++  static constexpr auto kernel = index_q_kernel<kUsePDL, kHeadDim, kRopeDim, PosT, kWeights, kAlignA3>;
+ #ifndef USE_ROCM
+   template <typename PosT, bool kWeights>
+-  static constexpr auto block_kernel = index_q_block_kernel<kUsePDL, kHeadDim, kRopeDim, PosT, kWeights>;
++  static constexpr auto block_kernel = index_q_block_kernel<kUsePDL, kHeadDim, kRopeDim, PosT, kWeights, kAlignA3>;
+   /// (token, head) rows from which SM100-family GPUs take `index_q_block_kernel`:
+   /// prefill chunks, and decode / verify batches that reach it (e.g. 64 requests x
+   /// 4-token verify x 32 heads). Smaller batches keep the warp-per-row kernel.
+--- a/python/sglang/kernels/ops/quantization/fp4_indexer_quant.py
++++ b/python/sglang/kernels/ops/quantization/fp4_indexer_quant.py
+@@ -3,6 +3,8 @@
+ import torch
+ import triton
+ import triton.language as tl
++
++from sglang.srt.layers.attention.dsv4 import di_align
+ 
+ from sglang.srt.runtime_context import get_platform
+ 
+@@ -66,6 +68,18 @@
+ 
+ 
+ @triton.jit
++def _di_fp4_exp(amax):
++    bits = tl.maximum(amax, 6.0 * 2.0**-126).to(tl.int32, bitcast=True)
++    return ((bits >> 23) & 255) - 2 + ((bits & 0x7fffff) > 0x400000).to(tl.int32)
++
++
++@triton.jit
++def _di_fp4_code(x):
++    # Hardware E2M1 RNE preserves the sign even when the magnitude rounds to zero.
++    return (_fp4_e2m1_code_rne(x) & 7) | ((x.to(tl.uint32, bitcast=True) >> 31).to(tl.uint8) << 3)
++
++
++@triton.jit
+ def quantize_fp4_indexer_row(
+     values,
+     v0,
+@@ -73,6 +87,7 @@
+     BLOCK_N: tl.constexpr,
+     GROUP_N: tl.constexpr,
+     RNE: tl.constexpr,
++    ALIGN_A3: tl.constexpr = False,
+ ):
+     """One row of quantize_fp4_indexer_tensor: values is the fp32 [BLOCK_N] row,
+     v0 / v1 its even / odd elements as fp32 [BLOCK_N // 2]. Returns
+@@ -92,15 +107,22 @@
+     )
+     amax3 = tl.max(tl.where(3 * GROUP_N <= offs, abs_values, 0.0), axis=0)
+ 
+-    sf0 = tl.maximum(amax0 / 6.0, 1.0e-4)
+-    sf1 = tl.maximum(amax1 / 6.0, 1.0e-4)
+-    sf2 = tl.maximum(amax2 / 6.0, 1.0e-4)
+-    sf3 = tl.maximum(amax3 / 6.0, 1.0e-4)
+-
+-    exp0 = _ceil_ue8m0_exp(sf0)
+-    exp1 = _ceil_ue8m0_exp(sf1)
+-    exp2 = _ceil_ue8m0_exp(sf2)
+-    exp3 = _ceil_ue8m0_exp(sf3)
++    if ALIGN_A3:
++        exp0 = _di_fp4_exp(amax0)
++        exp1 = _di_fp4_exp(amax1)
++        exp2 = _di_fp4_exp(amax2)
++        exp3 = _di_fp4_exp(amax3)
++    else:
++        sf0 = tl.maximum(amax0 / 6.0, 1.0e-4)
++        sf1 = tl.maximum(amax1 / 6.0, 1.0e-4)
++        sf2 = tl.maximum(amax2 / 6.0, 1.0e-4)
++        sf3 = tl.maximum(amax3 / 6.0, 1.0e-4)
++    
++        exp0 = _ceil_ue8m0_exp(sf0)
++        exp1 = _ceil_ue8m0_exp(sf1)
++        exp2 = _ceil_ue8m0_exp(sf2)
++        exp3 = _ceil_ue8m0_exp(sf3)
++    
+ 
+     packed_sf = exp0 | (exp1 << 8) | (exp2 << 16) | (exp3 << 24)
+ 
+@@ -116,7 +138,10 @@
+ 
+     v0 = v0 / scale0
+     v1 = v1 / scale1
+-    if RNE:
++    if ALIGN_A3:
++        code0 = _di_fp4_code(v0)
++        code1 = _di_fp4_code(v1)
++    elif RNE:
+         code0 = _fp4_e2m1_code_rne(v0)
+         code1 = _fp4_e2m1_code_rne(v1)
+     else:
+@@ -134,6 +159,7 @@
+     BLOCK_N: tl.constexpr,
+     GROUP_N: tl.constexpr,
+     RNE: tl.constexpr,
++    ALIGN_A3: tl.constexpr = False,
+ ):
+     token_id = tl.program_id(0)
+     offs = tl.arange(0, BLOCK_N)
+@@ -142,8 +168,12 @@
+     values = tl.load(row + offs).to(tl.float32)
+     v0 = tl.load(row + pair_offsets * 2).to(tl.float32)
+     v1 = tl.load(row + pair_offsets * 2 + 1).to(tl.float32)
++    if ALIGN_A3:
++        values = values.to(tl.bfloat16).to(tl.float32)
++        v0 = v0.to(tl.bfloat16).to(tl.float32)
++        v1 = v1.to(tl.bfloat16).to(tl.float32)
+     packed, packed_sf = quantize_fp4_indexer_row(
+-        values, v0, v1, BLOCK_N=BLOCK_N, GROUP_N=GROUP_N, RNE=RNE
++        values, v0, v1, BLOCK_N=BLOCK_N, GROUP_N=GROUP_N, RNE=RNE, ALIGN_A3=ALIGN_A3
+     )
+     tl.store(x_sf + token_id, packed_sf)
+     tl.store(x_fp4 + token_id * (BLOCK_N // 2) + pair_offsets, packed)
+@@ -159,6 +189,7 @@
+     BLOCK_N: tl.constexpr,
+     GROUP_N: tl.constexpr,
+     RNE: tl.constexpr,
++    ALIGN_A3: tl.constexpr = False,
+ ):
+     tl.static_assert(BLOCK_N == 128 and GROUP_N == 32)
+     # Each reduction covers one scale group. Keep its values for packing,
+@@ -170,13 +201,21 @@
+         group[:, None] < M * 4,
+         0,
+     ).to(tl.float32)
++    if ALIGN_A3:
++        values = values.to(tl.bfloat16).to(tl.float32)
+     amax = tl.max(tl.abs(values), axis=1)
+-    exp = _ceil_ue8m0_exp(tl.maximum(amax / 6.0, 1.0e-4))
++    if ALIGN_A3:
++        exp = _di_fp4_exp(amax)
++    else:
++        exp = _ceil_ue8m0_exp(tl.maximum(amax / 6.0, 1.0e-4))
+     scale = (exp << 23).to(tl.float32, bitcast=True)
+     v0, v1 = tl.split(
+         tl.reshape(values / scale[:, None], (BLOCK_M * 4, GROUP_N // 2, 2))
+     )
+-    if RNE:
++    if ALIGN_A3:
++        code0 = _di_fp4_code(v0)
++        code1 = _di_fp4_code(v1)
++    elif RNE:
+         code0 = _fp4_e2m1_code_rne(v0)
+         code1 = _fp4_e2m1_code_rne(v1)
+     else:
+@@ -202,8 +241,9 @@
+ def quantize_fp4_indexer_tensor(
+     x: torch.Tensor, rne: bool = False
+ ) -> tuple[torch.Tensor, torch.Tensor]:
+-    """Per-32 ue8m0 fp4 quantize. rne=True uses round-to-nearest-even (the dsv41
+-    reference rounding); the default keeps ``_fp4_e2m1_code``'s thresholds."""
++    """Per-32 ue8m0 fp4 quantize. A3 selects DeepInfer's scale and signed-zero
++    RNE semantics. Otherwise rne=True uses the legacy dsv41 reference rounding;
++    the default keeps ``_fp4_e2m1_code``'s thresholds."""
+     assert x.shape[-1] == 128
+     x = x.contiguous().view(-1, x.shape[-1])
+     x_fp4 = torch.empty((x.shape[0], 64), device=x.device, dtype=torch.int8)
+@@ -219,6 +259,7 @@
+             BLOCK_N=128,
+             GROUP_N=32,
+             RNE=rne,
++            ALIGN_A3=di_align.enabled("A3"),
+             num_warps=4,
+         )
+     elif x.shape[0] > 0:
+@@ -229,5 +270,6 @@
+             BLOCK_N=128,
+             GROUP_N=32,
+             RNE=rne,
++            ALIGN_A3=di_align.enabled("A3"),
+         )
+     return x_fp4, x_sf
+--- a/python/sglang/srt/layers/attention/dsv4/dsv41_sparse.py
++++ b/python/sglang/srt/layers/attention/dsv4/dsv41_sparse.py
+@@ -20,6 +20,8 @@
+     fake_quant_compressed_kv,
+     fake_quant_fp4,
+ )
++from sglang.srt.layers.attention.dsv4 import di_align
++
+ from sglang.srt.layers.linear import ReplicatedLinear
+ from sglang.srt.layers.quantization.base_config import QuantizationConfig
+ from sglang.srt.layers.utils.common import add_prefix
+@@ -266,6 +268,8 @@
+     def index_keys(self, latent: torch.Tensor, freqs: torch.Tensor) -> torch.Tensor:
+         """Pre-RoPE latents [n, D] -> fp4-rounded index keys [n, index_head_dim]."""
+         k = self.k_norm(self.forward_wk(latent))
++        if di_align.enabled("A3"):
++            return rope_tail(k, freqs, self.rope_head_dim)
+         return _rope_fq4(k, freqs, self.rope_head_dim)
+ 
+     def queries(

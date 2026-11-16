@@ -1,4 +1,4 @@
-"""XTier console UI for tf500's TP8 baseline and TP4 hybrid deployment.
+"""XTier console UI for tf500's TP8 FP4-KV deployment.
 
 Run with /data/xtier-env/bin/python. The active system unit is adopted for
 status without restarting it. Start stops that process, then launches the
@@ -16,8 +16,9 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from xtier.console import core, ui
+from xtier.console import core
 from xtier.console.__main__ import Jobs, make_handler
+import tf500_console_ui as ui
 import tf500_benchmark
 import tf500_api_proxy
 import tf500_proxy_admin
@@ -27,103 +28,14 @@ import tf500_server_info
 
 HOST = "<TF500_IP>"
 PORT = 30000
-TP4_PORT = 30001
 SERVICE = "sglang-ds41.service"
-TP4_SERVICE = "xtier-tp4.service"
 MODEL_ID = "ds41-86kd"
-TP4_MODEL_ID = "ds41-xtier-tp4"
 API_KEY_FILE = Path("/data/sglang-api-key")
 STATE_DIR = Path("/data/xtier-86kd-console")
 LOG_DIR = STATE_DIR / "logs"
 
-MODEL = {
-    "id": MODEL_ID,
-    "order": 10,
-    "name": "DeepSeek V4.1 Flash 1017",
-    "code": "DSV4.1 · 86KD",
-    "port": PORT,
-    "served": "DeepSeek-V4.1-Flash-1017",
-    "spec": "DSpark",
-    "arch": "TP8 · Humming MoE · 86KD 独立加速插件",
-    "hardware": "RTX PRO 6000D × 8 · tf500",
-    "ready_timeout": 3600,
-    "bench": {
-        "kind": "text",
-        "dec": "326 / 2678",
-        "pre": "12386 / 14105",
-        "title": "2026-11-15 单轮开发测量：共享 32K 前缀缓存 decode，独立冷 32K prefill；数值依次为并发 1 / 32 tok/s。",
-    },
-    "options": [
-        {"key": "packs", "label": "86KD 加速包", "default": "on", "switch": True,
-         "choices": [["on", "开 · 当前配置"], ["off", "关 · SGLang 基线"]]},
-        {"key": "spec", "label": "DSpark 投机解码", "default": "on", "switch": True,
-         "choices": [["on", "开 · 当前配置"], ["off", "关"]]},
-        {"key": "verify", "label": "DSpark 验证", "default": "compact",
-         "choices": [["compact", "变长 · 本机成本表"], ["static", "固定"]],
-         "off_when": [{"spec": "off"}]},
-        {"key": "context", "label": "上下文长度", "default": "1048576",
-         "choices": [["1048576", "1M · 当前配置"], ["524288", "512K"], ["262144", "256K"]]},
-        {"key": "running", "label": "最大并行请求", "default": "64",
-         "choices": [["64", "64 · 当前配置"], ["32", "32"], ["16", "16"], ["4", "4"]]},
-        {"key": "graph", "label": "Decode CUDA 图批量", "default": "32",
-         "choices": [["32", "32 · 当前配置"], ["16", "16"], ["8", "8"]]},
-        {"key": "memory", "label": "静态显存比例", "default": "0.78",
-         "choices": [["0.78", "0.78 · 当前配置"], ["0.74", "0.74"], ["0.70", "0.70"]]},
-    ],
-    "notes": [
-        {"when": {"packs": "off"}, "text": "关闭 86KD 钩子，不改变 SGLang、TP8 和 Humming MoE。"},
-        {"when": {"spec": "off"}, "text": "关闭 DSpark；验证模式选项不生效。"},
-    ],
-}
+MODEL = {'id': 'ds41-86kd', 'order': 10, 'name': 'DeepSeek V4.1 Flash 1017', 'code': 'DSV4.1 · TP8 FP4 KV', 'port': 30000, 'served': 'DeepSeek-V4.1-Flash-1017', 'spec': 'DSpark', 'arch': 'TP8 · DP Attention 8 · DP LM Head · Humming · 86KD', 'hardware': 'RTX PRO 6000D × 8 · tf500', 'ready_timeout': 3600, 'bench': {'kind': 'text', 'dec': '4214 · 64路开发实测', 'pre': '20543 · 64路开发实测', 'title': '2026-11-16 单轮精简开发验证（sd-dev3h-r1-p1，mem=0.85，tails=384，A1/A2/A3/A7+FP32-mid reader）：32K/1K 64路冷prefill 20543 tok/s、decode 4214 tok/s（单发 P 2315 / D 275.2）；64×128K（命中99.79%，14.4s共同窗口）冷prefill 20660、纯decode 3567 tok/s；64路短提示 D 2922 tok/s；最低空闲4858MiB。单轮开发实测，非3轮/1M正式全量验收。'}, 'options': [{'key': 'packs', 'label': '86KD 加速包', 'default': 'on', 'choices': [['on', '开']]}, {'key': 'spec', 'label': 'DSpark 投机解码', 'default': 'on', 'choices': [['on', '开 · draft 6']]}, {'key': 'verify', 'label': 'DSpark 验证', 'default': 'compact', 'choices': [['compact', '变长 · 本机成本表']]}, {'key': 'context', 'label': '上下文长度', 'default': '1048576', 'choices': [['1048576', '1M']]}, {'key': 'running', 'label': '最大并行请求', 'default': '64', 'choices': [['64', '64']]}, {'key': 'graph', 'label': 'Decode CUDA 图批量', 'default': '64', 'choices': [['64', '64']]}, {'key': 'memory', 'label': '静态显存比例', 'default': '0.85', 'choices': [['0.85', '0.85']]}, {'key': 'chunk', 'label': 'Prefill 分块', 'default': '32768', 'choices': [['32768', '32K']]}, {'key': 'interval', 'label': 'Prefill 中穿插 decode', 'default': '10', 'choices': [['10', '10 步']]}, {'key': 'tails', 'label': 'SWA 前缀尾部预算', 'default': '384', 'choices': [['384', '384']]}, {'key': 'kvpool', 'label': 'KV 逻辑总量（实测）', 'default': '67450880', 'choices': [['67450880', '67.45M · 启动时核实']]}, {'key': 'align', 'label': 'DeepInfer 第一档对齐', 'default': 'on', 'choices': [['on', '开 · 开发验证（A1/A2/A3/A7）'], ['off', '关 · 开发基线（p0）']]}], 'notes': [{'when': {}, 'text': '压缩主 KV 为 FP4，SWA 为 FP8；当前配置实测逻辑 KV 总量 67,450,880 token（每 DP 8,431,360）。容量由启动时分配决定，不代表已验证同等长度并发。'}, {'when': {}, 'text': '每 DP SWA 池 165,376 token；64×128K 两阶段实测命中 99.79%（14.4s 共同窗口 D 3567 tok/s），全程最低空闲 4858 MiB（4.744 GiB）。1M 为配置上限，尚未做 1M 验收。'}, {'when': {}, 'text': 'DeepInfer A1/A2/A3/A7 + 外置 FP32-mid reader 已通过单轮精简开发验证（sd-dev3h-r1，3段PPL +0.067%，U5全形状优于off），未标3轮/全矩阵正式验收；可切换回 p0 基线。点击启动才加载模型。'}]}
 
-TP4_MODEL = {
-    "id": TP4_MODEL_ID,
-    "order": 20,
-    "name": "DeepSeek V4.1 Flash 1017 · TP4 混合",
-    "code": "DSV4.1 · XTier TP4",
-    "port": TP4_PORT,
-    "served": "DeepSeek-V4.1-Flash-1017",
-    "spec": "DSpark",
-    "arch": "TP4 · XTier CPU/GPU 混合推理 · 静态变长验证",
-    "hardware": "RTX PRO 6000D × 4 · CPU0/NUMA0 · tf500",
-    "ready_timeout": 3600,
-    "bench": {
-        "kind": "text",
-        "dec": "126 单发",
-        "pre": "2326 单发",
-        "title": "2026-11-15 单发 32K 输入 / 1K 输出：冷 prefill 约 2326 tok/s；"
-                 "KV 命中 32512 token 后 decode 125.71 tok/s。未测 TP4 并发。",
-    },
-    "options": [
-        {"key": "engine", "label": "XTier 混合推理", "default": "on",
-         "choices": [["on", "开 · 当前配置"]]},
-        {"key": "spec", "label": "DSpark 投机解码", "default": "on",
-         "choices": [["on", "开 · draft 6 token"]]},
-        {"key": "verify", "label": "DSpark 验证", "default": "static",
-         "choices": [["static", "静态变长 · 当前配置"]]},
-        {"key": "engram", "label": "Engram 放置", "default": "cpu",
-         "choices": [["cpu", "CPU 内存 · 不复制"]]},
-        {"key": "context", "label": "上下文长度", "default": "524288",
-         "choices": [["524288", "512K · 当前配置"], ["262144", "256K"]]},
-        {"key": "kvpool", "label": "KV 池 Token", "default": "20000000",
-         "choices": [["20000000", "20M · 当前配置"], ["16000000", "16M"], ["12000000", "12M"]]},
-        {"key": "running", "label": "最大并行请求", "default": "32",
-         "choices": [["32", "32 · 当前配置"], ["16", "16"], ["8", "8"], ["4", "4"]]},
-        {"key": "batch", "label": "Prefill 分块", "default": "49152",
-         "choices": [["49152", "48K · 当前配置"], ["24576", "24K"], ["16384", "16K"]]},
-        {"key": "interleave", "label": "Prefill 中穿插 decode", "default": "72",
-         "choices": [["72", "72 步 · 当前配置"]]},
-        {"key": "graph", "label": "Decode CUDA 图批量", "default": "32",
-         "choices": [["32", "32 · 当前配置"]]},
-        {"key": "memory", "label": "静态显存比例", "default": "0.85",
-         "choices": [["0.85", "0.85 · 当前配置"]]},
-        {"key": "reserve", "label": "动态热专家显存预留", "default": "2",
-         "choices": [["2", "2 GiB/卡 · 当前配置"]]},
-    ],
-    "notes": [
-        {"when": {}, "text": "GPU0–3 + CPU0；每 Rank 12 线程；动态热专家初始 35 槽；GPU4–7 留给第二实例。"},
-    ],
-}
 
 
 def build(options, port):
@@ -141,32 +53,35 @@ def build(options, port):
         "MOE_BACKEND": "humming",
         "API_KEY_FILE": str(API_KEY_FILE),
     }
-    return env, ["/bin/bash", "/data/src/start-sglang-plan.sh"]
+    align_on = options.get("align") == "on"
+    hook_dir = Path(__file__).resolve().parent / "repair-a2-reader"
+    if not (hook_dir / "sitecustomize.py").is_file():
+        hook_dir = Path("/data/bench/align/repair-a2-reader")
+    py_path = f"{hook_dir}:/data/src/sglang-align/python" if align_on else "/data/src/sglang-align/python"
+    env.update({
+        "PYTHONPATH": py_path,
+        "CHUNK": options["chunk"], "INTERVAL": options["interval"],
+        "SGLANG_DP_USE_GATHERV": "1", "SGLANG_DP_USE_REDUCE_SCATTER": "1",
+        "SGLANG_DSV4_KV_LAYOUT": "v41_new", "SGLANG_DSV4_COMPRESSED_KV_LAYOUT": "auto",
+        "SGLANG_SM120_DSV41_KV": "1",
+        "SGLANG_DI_ALIGN": "0",
+        **{f"SGLANG_DI_ALIGN_A{i}": ("1" if align_on and i in (1, 2, 3, 7) else "0") for i in range(1, 9)},
+        "SGLANG_REPAIR_A2_FP32MID": "1" if align_on else "0",
+        "EXTRA_ARGS": "--attn-dp-size 8 --enable-dp-lm-head --min-free-slots-delay 1 --swa-prefix-tails " + options["tails"],
+    })
+    return env, ["/bin/bash", "/data/src/xtier_86kd/deploy/start-tp8-fp4-card.sh"]
 
 
-def build_tp4(options, port):
-    env = {
-        "HOST": HOST,
-        "PORT": str(port),
-        "CONTEXT": options["context"],
-        "KV_POOL": options["kvpool"],
-        "MAX_RUNNING": options["running"],
-        "BATCH": options["batch"],
-        "INTERLEAVE": options["interleave"],
-        "MEM": options["memory"],
-        "CUDA_VISIBLE_DEVICES": "0,1,2,3",
-        "API_KEY_FILE": str(API_KEY_FILE),
-    }
-    return env, ["/bin/bash", "/data/src/xtier_86kd/deploy/start-xtier-tp4.sh"]
 
 
 def tags(options):
-    return ["TP8", "86KD" if options["packs"] == "on" else "基线",
-            "变长验证" if options["spec"] == "on" and options["verify"] == "compact" else "固定验证"]
+    res = ["TP8", "86KD" if options["packs"] == "on" else "基线",
+           "变长验证" if options["spec"] == "on" and options["verify"] == "compact" else "固定验证"]
+    if options.get("align") == "on":
+        res.append("DI第一档·开发验证")
+    return res
 
 
-def tags_tp4(options):
-    return ["TP4", "XTier 混合", "CPU Engram", "动态热专家", "静态变长验证"]
 
 
 def _service_pid(service):
@@ -222,12 +137,8 @@ def _expected_server(pid, model):
                 return b""
         if proc.stat().st_uid != os.getuid():
             return False
-        if model == TP4_MODEL_ID:
-            return (b"start-xtier-tp4.sh" in command or
-                    (b"sglang.launch_server" in command and arg(b"--tp-size") == b"4"
-                     and arg(b"--port") == str(TP4_PORT).encode()))
         if model == MODEL_ID:
-            return (b"start-sglang-plan.sh" in command or
+            return (b"start-sglang-plan.sh" in command or b"start-tp8-fp4-card.sh" in command or
                     (b"sglang.launch_server" in command and arg(b"--tp-size") == b"8"
                      and arg(b"--port") == str(PORT).encode()))
         return False
@@ -242,7 +153,7 @@ def _gpu_summary(model):
             ["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total,utilization.gpu,power.draw",
              "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=5, check=True).stdout
         rows = [[part.strip() for part in line.split(",")] for line in out.splitlines() if line.count(",") >= 5]
-        indices = set(range(4)) if model == TP4_MODEL_ID else set(range(8))
+        indices = set(range(8))
         selected = [r for r in rows if int(r[0]) in indices]
         if len(selected) != len(indices):
             return {}
@@ -259,22 +170,18 @@ class Tf500Console(core.Console):
     def __init__(self):
         models = {
             MODEL_ID: dict(MODEL, config="tf500", build=build, tags=tags),
-            TP4_MODEL_ID: dict(TP4_MODEL, config="tf500-tp4", build=build_tp4, tags=tags_tp4),
         }
         super().__init__(models, STATE_DIR, log_dir=LOG_DIR, runner="setsid", guard_gib=0,
                          cwd="/data/src/sglang-xtier")
 
     def describe(self, model, options):
-        if model == TP4_MODEL_ID:
-            return ("XTier · DeepSeek V4.1 Flash 1017 / TP4 混合 / CPU Engram / "
-                    f"DSpark 6 / {int(options['context']) // 1024}K")
         return super().describe(model, options)
 
     def read_state(self):
         saved = core.Console.read_state(self)
         if saved and self.active(saved):
             return saved
-        for service, model in ((TP4_SERVICE, TP4_MODEL_ID), (SERVICE, MODEL_ID)):
+        for service, model in ((SERVICE, MODEL_ID),):
             pid = _service_pid(service)
             if pid and _expected_server(pid, model):
                 spec = self.models[model]
@@ -288,7 +195,7 @@ class Tf500Console(core.Console):
     def active(self, state=None):
         state = self.read_state() if state is None else state
         if state.get("runner") == "adopted":
-            service = state.get("service") or (TP4_SERVICE if state.get("model") == TP4_MODEL_ID else SERVICE)
+            service = state.get("service") or SERVICE
             return state.get("pid") == _service_pid(service) and _expected_server(state["pid"], state.get("model"))
         if not super().active(state):
             return False
@@ -301,7 +208,7 @@ class Tf500Console(core.Console):
         pid = state["pid"]
         if not self.active(state):
             return False
-        service = state.get("service") or (TP4_SERVICE if state.get("model") == TP4_MODEL_ID else SERVICE)
+        service = state.get("service") or SERVICE
         try:
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
@@ -348,8 +255,8 @@ class Tf500Console(core.Console):
     def console_data(self):
         data = super().console_data()
         data["texts"] = {
-            "subtitle": "tf500 · TP8 基准 + XTier TP4 混合 · DeepSeek V4.1 Flash 1017",
-            "foot": "系统服务会直接显示。切换卡片并启动会先停止当前模型；服务器重启后由已启用的系统服务恢复默认配置。",
+            "subtitle": "tf500 · TP8 / DP8 · FP4 KV · DeepSeek V4.1 Flash 1017",
+            "foot": "当前为单轮精简开发验证通过配置（sd-dev3h-r1，非3轮/1M正式全量验收）。模型由启动按钮手动加载。",
             "confirm": "启动 {name}？\n会先停止正在运行的模型，加载可能需要较长时间。API 将监听 <TF500_IP>:{port}。",
             "endpoint": "http://<TF500_IP>:{port}/v1 · {served}",
         }
@@ -367,11 +274,11 @@ class Tf500Console(core.Console):
                 "served": state.get("served", spec["served"])}
         if state and self.active(state):
             adopted = state.get("runner") == "adopted"
-            service = state.get("service") or (TP4_SERVICE if model == TP4_MODEL_ID else SERVICE)
+            service = state.get("service") or SERVICE
             log = _journal_tail(service) if adopted else core._read_tail(state.get("log"))
             elapsed = round(time.time() - state.get("started_at", time.time()))
             body.update(started_at=state.get("started_at"), elapsed=elapsed,
-                        options=state.get("options"), version="XTier TP4" if model == TP4_MODEL_ID else "86KD")
+                        options=state.get("options"), version="86KD")
             if _models_ok(state["port"]) and state["port"] not in self._waiting:
                 body.update(state="online", progress=100, phase="online", phase_label="在线")
             else:
@@ -454,32 +361,28 @@ def make_tf500_handler(console, jobs, benchmark):
             self.end_headers()
             self.wfile.write(body)
 
+        def _html_no_store(self, html_text):
+            payload = html_text.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            return self.wfile.write(payload)
+
         def do_GET(self):
             path = urlparse(self.path).path
             if path == "/":
                 data = {**console.console_data(), "status": console.status()}
-                page = tf500_nav.decorate(ui.page_html(data, title="XTier 86KD Console"), "console")
-                page = page.replace(
-                    "README 实测 tok/s · 文本：64K / 512K 提示 · AGENT：编码代理会话（悬停看测法）",
-                    "README 实测 tok/s · 悬停查看每张卡的输入长度、并发和测法",
-                    1,
-                )
-                return self._send(200, page, "text/html; charset=utf-8")
+                page = tf500_nav.decorate(ui.page_html(data, title="启动台 · TF500"), "console")
+                return self._html_no_store(page)
             if path == "/benchmark":
-                page = tf500_nav.decorate(tf500_benchmark.page_html(), "benchmark")
-                return self._send(200, page, "text/html; charset=utf-8")
+                return self._html_no_store(tf500_nav.decorate(tf500_benchmark.page_html(), "benchmark"))
             if path == "/proxy":
-                page = tf500_nav.decorate(tf500_proxy_admin.page_html(), "proxy").encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(page)))
-                self.send_header("Cache-Control", "no-store")
-                self.send_header("X-Content-Type-Options", "nosniff")
-                self.end_headers()
-                return self.wfile.write(page)
+                return self._html_no_store(tf500_nav.decorate(tf500_proxy_admin.page_html(), "proxy"))
             if path == "/server":
-                page = tf500_nav.decorate(tf500_server_info.page_html(), "server")
-                return self._send(200, page, "text/html; charset=utf-8")
+                return self._html_no_store(tf500_nav.decorate(tf500_server_info.page_html(), "server"))
             if path == "/api/server/status":
                 data = tf500_server_info.snapshot()
                 proxy = tf500_api_proxy.status()
@@ -495,17 +398,28 @@ def make_tf500_handler(console, jobs, benchmark):
                 return self._admin_json(tf500_proxy_admin.selftest())
             if path == "/api/benchmark/status":
                 return self._json(benchmark.status())
+            if path == "/api/benchmark/plan":
+                try:
+                    form = parse_qs(urlparse(self.path).query)
+                    return self._json(benchmark.plan_preview(form))
+                except ValueError as exc:
+                    return self._json({"error": str(exc)}, 400)
             return super().do_GET()
 
         def do_POST(self):
             path = urlparse(self.path).path
-            if path in ("/api/proxy/keys", "/api/proxy/keys/delete"):
+            if path in ("/api/proxy/keys", "/api/proxy/keys/delete", "/api/proxy/master-key/copy"):
                 if self.headers.get("X-Requested-With") != "fetch":
                     return self._admin_json({"error": "forbidden"}, 403)
                 origin = self.headers.get("Origin")
                 if origin and urlparse(origin).netloc != self.headers.get("Host"):
                     return self._admin_json({"error": "forbidden origin"}, 403)
                 try:
+                    if path == "/api/proxy/master-key/copy":
+                        key = tf500_proxy_keys.MASTER_FILE.read_text(encoding="utf-8").strip()
+                        if not key:
+                            raise OSError("empty master key")
+                        return self._admin_json({"key": key})
                     length = int(self.headers.get("Content-Length") or 0)
                     if length <= 0 or length > 8192:
                         raise ValueError("请求体大小无效")
@@ -523,7 +437,7 @@ def make_tf500_handler(console, jobs, benchmark):
                     return self._admin_json({"error": str(exc)}, 400)
                 except OSError:
                     return self._admin_json({"error": "密钥文件操作失败"}, 500)
-            if path not in ("/api/benchmark/start", "/api/benchmark/stop"):
+            if path not in ("/api/benchmark/start", "/api/benchmark/stop", "/api/benchmark/plan", "/api/benchmark/clear"):
                 return super().do_POST()
             if self.headers.get("X-Requested-With") != "fetch":
                 return self._json({"error": "forbidden"}, 403)
@@ -532,6 +446,10 @@ def make_tf500_handler(console, jobs, benchmark):
                 if length < 0 or length > 65536:
                     raise ValueError("请求体过大")
                 form = parse_qs(self.rfile.read(length).decode("utf-8", "replace"))
+                if path.endswith("/plan"):
+                    return self._json(benchmark.plan_preview(form))
+                if path.endswith("/clear"):
+                    return self._json(benchmark.clear((form.get("id") or [""])[0]))
                 if path.endswith("/start"):
                     if jobs.job["state"] == "running":
                         raise ValueError("模型正在启动，请等就绪后测速")
@@ -545,11 +463,16 @@ def make_tf500_handler(console, jobs, benchmark):
     return Handler
 
 
+class ConsoleHTTPServer(ThreadingHTTPServer):
+    request_queue_size = 128
+    daemon_threads = True
+
+
 def main():
     console = Tf500Console()
     benchmark = tf500_benchmark.Benchmark()
     jobs = Tf500Jobs(console, benchmark)
-    server = ThreadingHTTPServer(("127.0.0.1", 8100), make_tf500_handler(console, jobs, benchmark))
+    server = ConsoleHTTPServer(("127.0.0.1", 8100), make_tf500_handler(console, jobs, benchmark))
     print("XTier 86KD console on http://127.0.0.1:8100/", flush=True)
     server.serve_forever()
 

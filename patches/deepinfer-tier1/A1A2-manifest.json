@@ -1,0 +1,32 @@
+[
+  {
+    "path": "kernels/jit/include/sgl_kernel/deepseek_v4/kv_layout.cuh",
+    "before": "4c6a1f9636a0d23e751910dacabb80a88d1d59dea129b20a92fea8863d9f0bea",
+    "after": "f00a9d779ff94b5703294147ddce019718ac6b1b0a7f40c1c8b470a05f77f151"
+  },
+  {
+    "path": "kernels/ops/attention/dsv4/attn.py",
+    "before": "86cc4947862de5244b880d9536602b4aaf141d0ac24c996ca9aec95aaaede14f",
+    "after": "12a6d3030e02893718f9e090ac1e3fdb675f1a55982aab38dfc4c90f74540784"
+  },
+  {
+    "path": "kernels/ops/attention/dsv4/compress.py",
+    "before": "2bc9c870595b7bd81cc7db15baf98ff39cfa4ba2d43b96609db86ed02140b97f",
+    "after": "f01da4c82ae20185a5c4747eee93e7d01c3e6b957bd52a65dfe19a49eff26c4e"
+  },
+  {
+    "path": "kernels/ops/attention/dsv4/kv_align_jit.py",
+    "before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "after": "24e823490884bb77be0efc0d8cf5358b1a9bb619b6342f1bb5aaf88629e29f6f"
+  },
+  {
+    "path": "kernels/ops/attention/dsv4/low_ratio_compress.py",
+    "before": "a48322dd03727a5fc6b905588fb7aa4c291150b09139bd4fa190edf7c8b38924",
+    "after": "bda1a1f66b952bc8bd211e1ac914215b2fcea3ac2f6153aa5add7d0881fec33a"
+  },
+  {
+    "path": "kernels/ops/attention/dsv4/norm_rope.py",
+    "before": "b10b040ba5d1ddc98522807e098daac8bb901899ee9ea2dd1042561aed9a6207",
+    "after": "2dbfed7eec9e937a19c89eed43614ecf12273ba6113dc7cbbcad70923738c4aa"
+  }
+]

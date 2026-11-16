@@ -1,0 +1,193 @@
+--- a/python/sglang/kernels/jit/include/sgl_kernel/deepseek_v4/kv_layout.cuh
++++ b/python/sglang/kernels/jit/include/sgl_kernel/deepseek_v4/kv_layout.cuh
+@@ -7,6 +7,15 @@
+ 
+ #include <sgl_kernel/deepseek_v4/fp4_utils.cuh>
+ #include <sgl_kernel/deepseek_v4/fp8_utils.cuh>
++
++// These compile-time switches are supplied by kv_align_jit.py. The module
++// name includes both bits; legacy callers default to the original quantizers.
++#ifndef SGLANG_DI_ALIGN_A1
++#define SGLANG_DI_ALIGN_A1 0
++#endif
++#ifndef SGLANG_DI_ALIGN_A2
++#define SGLANG_DI_ALIGN_A2 0
++#endif
+ 
+ #include <bit>
+ #include <cstdint>
+@@ -183,7 +192,7 @@
+   // quotient's exponent is amax's minus 8, plus one when the mantissa exceeds 1.75, floored at 2^-13.
+   const uint32_t bits = __float_as_uint(amax);
+   const int32_t exponent =
+-      max(static_cast<int32_t>(bits >> 23) - 8 + static_cast<int32_t>((bits & 0x7FFFFFu) > 0x600000u), 114);
++      max(static_cast<int32_t>(bits >> 23) - 8 + static_cast<int32_t>((bits & 0x7FFFFFu) > 0x600000u), SGLANG_DI_ALIGN_A1 ? 105 : 114);
+   // The scale is a power of two, so the multiply by its reciprocal is the exact quotient.
+   const float inv_scale = fp8::inv_scale_ue8m0(exponent);
+   AlignedVector<fp8x2_e4m3_t, kVecSize / 2> out;
+@@ -213,23 +222,26 @@
+ 
+   const float amax = warp::reduce_max<kTileLanes>(vec_amax(v));
+ #ifdef USE_ROCM
+-  const float scale = fp4::e4m3_round_rn(fminf(fmaxf(__fdiv_rn(amax, 6.0f), 0x1p-9f), 448.0f));
++  const float scale = fp4::e4m3_round_rn((SGLANG_DI_ALIGN_A2 ? fminf(__fmul_rn(fmaxf(amax, 6.0f * 0x1p-9f), 1.0f / 6.0f), 448.0f) : fminf(fmaxf(__fdiv_rn(amax, 6.0f), 0x1p-9f), 448.0f)));
+   // the low byte of the pack's 16-bit storage, whether fp8x2_e4m3_t is an integer or HIP's fp8 pair
+   const auto scale_bits = static_cast<uint8_t>(std::bit_cast<uint16_t>(fp8::pack_fp8(scale, scale)));
+ #else
+-  const __nv_fp8_e4m3 scale_e4m3{fminf(fmaxf(__fdiv_rn(amax, 6.0f), 0x1p-9f), 448.0f)};
++  const __nv_fp8_e4m3 scale_e4m3{(SGLANG_DI_ALIGN_A2 ? fminf(__fmul_rn(fmaxf(amax, 6.0f * 0x1p-9f), 1.0f / 6.0f), 448.0f) : fminf(fmaxf(__fdiv_rn(amax, 6.0f), 0x1p-9f), 448.0f))};
+   const float scale = static_cast<float>(scale_e4m3);
+   const uint8_t scale_bits = scale_e4m3.__x;
+ #endif
++  // DeepInfer's transform kernel does not enable fast math: reciprocal is
++  // round-to-nearest, then a separate round-to-nearest FP32 multiply.
++  const float reciprocal = SGLANG_DI_ALIGN_A2 ? __frcp_rn(scale) : 0.0f;
+   AlignedVector<uint8_t, kVecSize / 2> out;
+ #pragma unroll
+   for (uint32_t i = 0; i < kVecSize / 2; ++i) {
+     // IEEE division by the rounded scale, as the reference does; a reciprocal multiply could cross an e2m1 tie.
+ #ifdef USE_ROCM
+-    out[i] = static_cast<uint8_t>(fp4::e2m1x2_code({__fdiv_rn(v[2 * i], scale), __fdiv_rn(v[2 * i + 1], scale)}));
++    out[i] = static_cast<uint8_t>(fp4::e2m1x2_code({(SGLANG_DI_ALIGN_A2 ? __fmul_rn(v[2 * i], reciprocal) : __fdiv_rn(v[2 * i], scale)), (SGLANG_DI_ALIGN_A2 ? __fmul_rn(v[2 * i + 1], reciprocal) : __fdiv_rn(v[2 * i + 1], scale))}));
+ #else
+     out[i] = static_cast<uint8_t>(__nv_cvt_float2_to_fp4x2(
+-        fp32x2_t{__fdiv_rn(v[2 * i], scale), __fdiv_rn(v[2 * i + 1], scale)}, __NV_E2M1, cudaRoundNearest));
++        fp32x2_t{(SGLANG_DI_ALIGN_A2 ? __fmul_rn(v[2 * i], reciprocal) : __fdiv_rn(v[2 * i], scale)), (SGLANG_DI_ALIGN_A2 ? __fmul_rn(v[2 * i + 1], reciprocal) : __fdiv_rn(v[2 * i + 1], scale))}, __NV_E2M1, cudaRoundNearest));
+ #endif
+   }
+   out.store(data_row, tx);
+--- a/python/sglang/kernels/ops/attention/dsv4/attn.py
++++ b/python/sglang/kernels/ops/attention/dsv4/attn.py
+@@ -11,6 +11,7 @@
+ )
+ from sglang.srt.utils import is_gfx95_supported
+ 
++from .kv_align_jit import load_kv_align_jit
+ from .kv_layout import KVLayout
+ from .utils import make_name
+ 
+@@ -44,7 +45,7 @@
+         args = make_cpp_args(input_dtype, index_dtype, page_size, is_arch_support_pdl())
+         cname, wrappers = "Indexer", ["run"]
+     kernel_class = f"FusedStoreCache{cname}Kernel<{args}>"
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("store_" + name),
+         *args,
+         cuda_files=["deepseek_v4/store.cuh"],
+--- a/python/sglang/kernels/ops/attention/dsv4/compress.py
++++ b/python/sglang/kernels/ops/attention/dsv4/compress.py
+@@ -16,6 +16,7 @@
+ )
+ from sglang.srt.utils import is_gfx95_supported, is_hip, is_xpu
+ 
++from .kv_align_jit import load_kv_align_jit
+ from .kv_layout import KVLayout
+ from .utils import make_name
+ 
+@@ -75,7 +76,7 @@
+         cuda_wrappers.append(
+             ("forward_fp8_2buff", f"FusedNormRopeKernel<{args}>::forward_fp8_2buff")
+         )
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name(f"fused_norm_rope_v2"),
+         *args,
+         cuda_files=[f"deepseek_v4/fused_norm_rope_v2.cuh"],
+--- a/python/sglang/kernels/ops/attention/dsv4/kv_align_jit.py
++++ b/python/sglang/kernels/ops/attention/dsv4/kv_align_jit.py
+@@ -0,0 +1,11 @@
++"""Cache-isolated JIT options for the A1/A2 KV writer alignment."""
++from sglang.kernels.jit.utils import load_jit
++from sglang.srt.layers.attention.dsv4 import di_align
++
++
++def load_kv_align_jit(name, *args, **kwargs):
++    a1, a2 = int(di_align.enabled("A1")), int(di_align.enabled("A2"))
++    flags = list(kwargs.pop("extra_cuda_cflags", []))
++    flags += [f"-DSGLANG_DI_ALIGN_A1={a1}", f"-DSGLANG_DI_ALIGN_A2={a2}"]
++    return load_jit(f"{name}_di_a1{a1}_a2{a2}", *args,
++                    extra_cuda_cflags=flags, **kwargs)
+--- a/python/sglang/kernels/ops/attention/dsv4/low_ratio_compress.py
++++ b/python/sglang/kernels/ops/attention/dsv4/low_ratio_compress.py
+@@ -23,6 +23,7 @@
+     make_cpp_args,
+ )
+ 
++from .kv_align_jit import load_kv_align_jit
+ from .kv_layout import KVLayout
+ from .utils import make_name
+ 
+@@ -39,7 +40,7 @@
+         layout.cpp_name,
+         is_arch_support_pdl(),
+     )
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("c1_decode"),
+         *args,
+         cuda_files=["deepseek_v4/c1.cuh"],
+@@ -121,7 +122,7 @@
+         layout.cpp_name,
+         is_arch_support_pdl(),
+     )
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("c2"),
+         *args,
+         cuda_files=["deepseek_v4/c2.cuh"],
+--- a/python/sglang/kernels/ops/attention/dsv4/norm_rope.py
++++ b/python/sglang/kernels/ops/attention/dsv4/norm_rope.py
+@@ -10,6 +10,7 @@
+ )
+ from sglang.srt.utils import is_hip, is_xpu
+ 
++from .kv_align_jit import load_kv_align_jit
+ from .kv_layout import KVLayout
+ from .utils import make_name
+ 
+@@ -58,7 +59,7 @@
+ ):
+     """Main MLA path Q kernel: rmsnorm-self + RoPE, warp per (token, head)."""
+     args = make_cpp_args(dtype, head_dim, rope_dim, apply_norm, is_arch_support_pdl())
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("main_q_norm_rope"),
+         *args,
+         cuda_files=["deepseek_v4/main_norm_rope.cuh"],
+@@ -80,7 +81,7 @@
+     args = make_cpp_args(
+         dtype, head_dim, rope_dim, page_size, layout.cpp_name, is_arch_support_pdl()
+     )
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("main_k_norm_rope_flashmla"),
+         *args,
+         cuda_files=["deepseek_v4/main_norm_rope.cuh"],
+@@ -102,7 +103,7 @@
+     args = make_cpp_args(
+         dtype, head_dim, rope_dim, page_size, layout.cpp_name, is_arch_support_pdl()
+     )
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("main_k_norm_rope_q_flashmla"),
+         *args,
+         cuda_files=["deepseek_v4/main_norm_rope.cuh"],
+@@ -116,7 +117,7 @@
+ def _jit_main_q_indexer_rope_hadamard_quant_module(dtype: torch.dtype):
+     """C4 indexer Q kernel: RoPE + 128-pt Hadamard + fp8 act-quant"""
+     args = make_cpp_args(dtype, is_arch_support_pdl())
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("main_q_indexer_rope_hadamard_quant"),
+         *args,
+         cuda_files=["deepseek_v4/main_norm_rope.cuh"],
+@@ -129,7 +130,7 @@
+ @cache_once
+ def _jit_main_q_indexer_rope_hadamard_fp4_quant_module(dtype: torch.dtype):
+     args = make_cpp_args(dtype, is_arch_support_pdl())
+-    return load_jit(
++    return load_kv_align_jit(
+         make_name("main_q_indexer_rope_hadamard_fp4_quant"),
+         *args,
+         cuda_files=["deepseek_v4/main_norm_rope.cuh"],

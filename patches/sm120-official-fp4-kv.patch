@@ -1,0 +1,174 @@
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -2016,6 +2016,8 @@
+     # Compressed-cache layout under "v41": "auto" (fp4 for the fp4-rounded
+     # ratio-1 / ratio-2 latents, fp8 for ratios 4 / 128), "fp8" or "fp4" for all.
+     SGLANG_DSV4_COMPRESSED_KV_LAYOUT = EnvStr("auto")
++    # Opt-in integration of FlashInfer SM120 V4.1 inline FP8/FP4 KV readers.
++    SGLANG_SM120_DSV41_KV = EnvBool(False)
+     # unified_kv only: split the pool into an fp8 nope pool plus a parallel
+     # bf16 rope pool, 640 B/token instead of 1024. The unified pool takes no
+     # dtype, so --kv-cache-dtype has no effect there and this switch is the
+--- a/python/sglang/srt/mem_cache/deepseek_v4_memory_pool.py
++++ b/python/sglang/srt/mem_cache/deepseek_v4_memory_pool.py
+@@ -227,6 +227,22 @@
+         and torch.version.cuda is not None
+         and torch.cuda.get_device_capability()[0] == 10
+     )
++    if envs.SGLANG_SM120_DSV41_KV.get():
++        assert get_platform().is_sm120 and mode == "v41_new", (
++            "SGLANG_SM120_DSV41_KV requires SM120 and SGLANG_DSV4_KV_LAYOUT=v41_new"
++        )
++        assert get_exec().kernel.dsv4_attn_backend in ("auto", "flashmla"), (
++            "SM120 V4.1 KV is integrated only with the FlashMLA backend"
++        )
++        from sglang.kernels.ops.attention.dsv41_sm120 import check_capabilities
++
++        check_capabilities()
++        logger.info(
++            "SM120 V4.1 KV enabled: inline FP8 SWA (528B), compressed=%s "
++            "(auto uses FP4 for C1/C2, 288B), FlashInfer BF16 attention; source=%s",
++            option, __file__,
++        )
++        return KVLayout.V41_NEW, option
+     if _is_hip:
+         supported = (
+             is_gfx95_supported() and resolve_hip_flashmla_backend() == "aiter_sparse"
+--- a/python/sglang/srt/layers/attention/deepseek_v4_backend.py
++++ b/python/sglang/srt/layers/attention/deepseek_v4_backend.py
+@@ -4562,6 +4562,11 @@
+                 o = flash_mla_with_kvcache_sm120(
+                     q=q,
+                     k_cache=swa_k_cache,
++                    kv_layout=token_to_kv_pool.get_swa_key_layout(),
++                    extra_kv_layout=(
++                        token_to_kv_pool.get_extra_key_layout(layer_id)
++                        if extra_k_cache is not None else None
++                    ),
+                     head_dim_v=self.head_dim_v,
+                     softmax_scale=self.softmax_scale,
+                     indices=swa_page_indices,
+--- a/python/sglang/kernels/ops/attention/flash_mla_sm120.py
++++ b/python/sglang/kernels/ops/attention/flash_mla_sm120.py
+@@ -300,6 +300,14 @@
+ 
+     Dispatches to FlashInfer (default if available), Triton, or PyTorch fallback.
+     """
++    from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
++
++    kv_layout = KVLayout.parse(kwargs.get("kv_layout", KVLayout.V4))
++    if kv_layout is not KVLayout.V4:
++        from sglang.kernels.ops.attention.dsv41_sm120 import forward
++
++        return forward(**kwargs)
++
+     q = kwargs["q"]
+     k_cache = kwargs["k_cache"]
+     indices = kwargs["indices"]
+--- /dev/null
++++ b/python/sglang/kernels/ops/attention/dsv41_sm120.py
+@@ -0,0 +1,104 @@
++"""SM120 adapter for official V4.1 inline FP8 SWA + FP4 compressed KV.
++
++Uses installed FlashInfer kernels directly. No expansion of the global KV pool
++to FP8/BF16 and no page-copy workspace; byte layout is explicit at the boundary.
++The old V4 path remains in flash_mla_sm120.py.
++"""
++from functools import lru_cache
++import inspect
++import math
++
++import torch
++
++from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
++
++
++@lru_cache(maxsize=1)
++def check_capabilities():
++    from flashinfer.mla import SparseMLASm120Wrapper
++
++    params = inspect.signature(SparseMLASm120Wrapper).parameters
++    required = {"kv_scale_format", "extra_kv_fp4", "compute_precision"}
++    if not required <= set(params):
++        raise RuntimeError("Installed FlashInfer lacks the SM120 V4.1 mixed-KV API")
++
++
++@lru_cache(maxsize=16)
++def _wrapper(device_index, extra_fp4):
++    from flashinfer.mla import SparseMLASm120Wrapper
++
++    return SparseMLASm120Wrapper(
++        kv_scale_format="ue8m0_g32_inline", extra_kv_fp4=extra_fp4,
++        compute_precision="bf16", backend="sparse",
++        device=torch.device("cuda", device_index),
++    )
++
++
++def _cache_view(cache, layout):
++    if cache.ndim != 4 or cache.shape[2] != 1:
++        raise ValueError(f"Expected NHD paged KV, got {tuple(cache.shape)}")
++    if cache.shape[-1] != layout.bytes_per_token:
++        raise ValueError(f"KV bytes do not match explicit layout {layout}")
++    if cache.element_size() != 1 or cache.stride(-1) != 1:
++        raise ValueError("V4.1 cache must have byte storage and contiguous records")
++    if cache.stride(1) != layout.bytes_per_token:
++        raise ValueError("This adapter requires packed inline token records")
++    return cache.view(torch.uint8)
++
++
++def forward(*, q, k_cache, indices, head_dim_v, kv_layout,
++            extra_k_cache=None, extra_indices_in_kvcache=None,
++            extra_kv_layout=None, topk_length=None, extra_topk_length=None,
++            attn_sink=None, softmax_scale=None, **_):
++    check_capabilities()
++    from flashinfer.mla._sparse_mla_sm120 import (
++        _DECODE_MAX_TOKENS, _MODEL_TYPE_DSV4_1,
++        _decode_dsv4_num_splits, _decode_scratch_heads,
++    )
++
++    kv_layout = KVLayout.parse(kv_layout)
++    if kv_layout is not KVLayout.V41_NEW:
++        raise ValueError("SM120 V4.1 adapter requires V41_NEW SWA storage")
++    if q.ndim != 4 or q.shape[1] != 1 or q.shape[-1] != 512 or head_dim_v != 512:
++        raise ValueError(f"Expected query [T,1,H,512], got {tuple(q.shape)}")
++    if q.dtype is not torch.bfloat16:
++        raise ValueError("V4.1 sparse MLA query must be BF16")
++    rows, _, heads, _ = q.shape
++    kv = _cache_view(k_cache, kv_layout)
++    out = torch.empty((rows, heads, 512), dtype=torch.bfloat16, device=q.device)
++    lse = torch.empty((rows, heads), dtype=torch.float32, device=q.device)
++    if rows == 0:
++        return out.unsqueeze(1), lse.unsqueeze(-1)
++    idx = indices.reshape(rows, -1)
++    extra_fp4 = False
++    extra_kv = extra_idx = None
++    if extra_k_cache is not None:
++        if extra_indices_in_kvcache is None or extra_kv_layout is None:
++            raise ValueError("Extra cache requires indices and an explicit layout")
++        extra_layout = KVLayout.parse(extra_kv_layout)
++        if extra_layout not in (KVLayout.V41_NEW, KVLayout.V41_FP4_NEW):
++            raise ValueError(f"Unsupported extra layout {extra_layout}")
++        extra_fp4 = extra_layout is KVLayout.V41_FP4_NEW
++        extra_kv = _cache_view(extra_k_cache, extra_layout)
++        extra_idx = extra_indices_in_kvcache.reshape(rows, -1)
++    elif extra_indices_in_kvcache is not None or extra_topk_length is not None:
++        raise ValueError("Extra indices/lengths require an extra cache")
++    mid_out = mid_lse = None
++    if rows <= _DECODE_MAX_TOKENS:
++        splits = _decode_dsv4_num_splits(
++            idx.shape[1], extra_idx.shape[1] if extra_idx is not None else 0,
++            _MODEL_TYPE_DSV4_1,
++        )
++        scratch_heads = _decode_scratch_heads(heads)
++        mid_out = torch.empty((rows, scratch_heads, splits, 512), dtype=torch.bfloat16, device=q.device)
++        mid_lse = torch.empty((rows, scratch_heads, splits), dtype=torch.float32, device=q.device)
++    _wrapper(q.device.index, extra_fp4).run(
++        q.squeeze(1), kv, idx, out,
++        softmax_scale if softmax_scale is not None else 512 ** -0.5,
++        out_lse=lse,
++        topk_length=topk_length, attn_sink=attn_sink,
++        extra_kv_cache=extra_kv, extra_indices=extra_idx,
++        extra_topk_length=extra_topk_length,
++        mid_out=mid_out, mid_lse=mid_lse, lse_scale=math.log(2),
++    )
++    return out.unsqueeze(1), lse.unsqueeze(-1)

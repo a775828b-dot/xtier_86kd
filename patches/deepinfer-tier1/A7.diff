@@ -1,0 +1,238 @@
+--- a/python/sglang/kernels/ops/gemm/dsv4_wo_a.py
++++ b/python/sglang/kernels/ops/gemm/dsv4_wo_a.py
+@@ -1,6 +1,8 @@
+ from __future__ import annotations
+ 
+ import torch
++from sglang.srt.layers.attention.dsv4 import di_align
++
+ import triton
+ import triton.language as tl
+ 
+@@ -94,14 +96,14 @@
+ 
+ 
+ @triton.jit
+-def _wo_a_reduce_quant(P, Q, S, M: tl.constexpr):
++def _wo_a_reduce_quant(P, Q, S, M: tl.constexpr, ALIGN_A7: tl.constexpr):
+     row, tile = tl.program_id(0), tl.program_id(1)
+     i = tile * 256 + tl.arange(0, 256)
+     split = tl.arange(0, 8)
+     v = tl.load(P + split[:, None] * (M * 2048) + row * 2048 + i[None, :])
+     y = tl.sum(v, 0).to(tl.bfloat16).to(tl.float32).reshape((8, 32))
+     amax = tl.max(tl.abs(y), 1)
+-    sf, inv = ue8m0_scale(amax)
++    sf, inv = ue8m0_scale(amax, ALIGN_A7)
+     quant = tl.minimum(tl.maximum(y * inv[:, None], -448.0), 448.0).to(tl.float8e4nv)
+     tl.store(Q + row * 2048 + i, quant.reshape((256,)))
+     col = tile * 8 + tl.arange(0, 8)
+@@ -118,7 +120,7 @@
+     m = p.shape[1]
+     q = torch.empty((m, 2048), device=p.device, dtype=torch.float8_e4m3fn)
+     s = torch.empty(8192, device=p.device, dtype=torch.uint8)
+-    _wo_a_reduce_quant[(m, 8)](p, q, s, m, num_warps=4)
++    _wo_a_reduce_quant[(m, 8)](p, q, s, m, ALIGN_A7=di_align.enabled("A7"), num_warps=4)
+     return q, s
+ 
+ 
+--- a/python/sglang/kernels/ops/layernorm/hc_combine_norm.py
++++ b/python/sglang/kernels/ops/layernorm/hc_combine_norm.py
+@@ -1,6 +1,8 @@
+ """Collapse the hyper-connection streams and normalize the sublayer input."""
+ 
+ import torch
++from sglang.srt.layers.attention.dsv4 import di_align
++
+ import triton
+ import triton.language as tl
+ 
+@@ -108,6 +110,7 @@
+     BLOCK: tl.constexpr,
+     GROUPS: tl.constexpr,
+     SLICE: tl.constexpr,
++    ALIGN_A7: tl.constexpr,
+ ):
+     row, part = tl.program_id(0), tl.program_id(1)
+     if row < M:
+@@ -123,7 +126,7 @@
+         y = (value * inv_rms * weight).to(tl.bfloat16)
+         tl.store(Y + row * K + h, y, m & slice_mask)
+         g_lo, g_hi = part * (SLICE // 32), (part + 1) * (SLICE // 32)
+-        mxfp8_epilogue(y, row, Q, S, K, BLOCK, GROUPS, g_lo, g_hi)
++        mxfp8_epilogue(y, row, Q, S, K, BLOCK, GROUPS, g_lo, g_hi, ALIGN_A7)
+     else:
+         # Padding scale entries are disjoint from the live rows above.
+         off = ((row - M) * tl.num_programs(1) + part) * 512 + tl.arange(0, 512)
+@@ -177,6 +180,7 @@
+         BLOCK=triton.next_power_of_2(k),
+         GROUPS=k // 32,
+         SLICE=k // parts,
++        ALIGN_A7=di_align.enabled("A7"),
+         num_warps=8,
+     )
+     return y, q, s
+--- a/python/sglang/kernels/ops/layernorm/rmsnorm_mxfp8.py
++++ b/python/sglang/kernels/ops/layernorm/rmsnorm_mxfp8.py
+@@ -3,6 +3,8 @@
+ from __future__ import annotations
+ 
+ import torch
++from sglang.srt.layers.attention.dsv4 import di_align
++
+ import triton
+ import triton.language as tl
+ 
+@@ -42,6 +44,7 @@
+     BLOCK: tl.constexpr,
+     GROUPS: tl.constexpr,
+     ORDER_8WARP: tl.constexpr,
++    ALIGN_A7: tl.constexpr,
+ ):
+     row = tl.program_id(0)
+     if row < M:
+@@ -55,7 +58,7 @@
+         inv = tl.rsqrt(ss / K + EPS)
+         y = (v * inv * weight).to(tl.bfloat16)
+         tl.store(Y + row * K + h, y, h < K)
+-        mxfp8_epilogue(y, row, Q, S, K, BLOCK, GROUPS, 0, GROUPS)
++        mxfp8_epilogue(y, row, Q, S, K, BLOCK, GROUPS, 0, GROUPS, ALIGN_A7)
+     else:
+         # Padding scale entries are disjoint from the live rows above.
+         last = (tl.cdiv(M, 128) - 1) * 128
+@@ -97,6 +100,7 @@
+         BLOCK=block,
+         GROUPS=k // 32,
+         ORDER_8WARP=num_warps != 8,
++        ALIGN_A7=di_align.enabled("A7"),
+         num_warps=num_warps,
+         enable_fp_fusion=False,
+     )
+--- a/python/sglang/kernels/ops/quantization/mxfp8_epilogue.py
++++ b/python/sglang/kernels/ops/quantization/mxfp8_epilogue.py
+@@ -22,7 +22,12 @@
+ # FlashInfer's positive-rounding UE8M0 conversion of a per-group amax, subnormals
+ # included: the scale byte and the multiplier that maps the group into e4m3 range.
+ @triton.jit
+-def ue8m0_scale(amax):
++def ue8m0_scale(amax, ALIGN_A7: tl.constexpr = False):
++    if ALIGN_A7:
++        a = tl.maximum(amax, 1.0e-4)
++        bits = a.to(tl.int32, bitcast=True)
++        e = ((bits >> 23) & 255) - 135 + ((bits & 0x7FFFFF) > 0x600000).to(tl.int32)
++        return e + 127, ((127 - e) << 23).to(tl.float32, bitcast=True)
+     normalized = amax * (1.0 / 448.0)
+     bits = normalized.to(tl.int32, bitcast=True)
+     exponent = (bits >> 23) & 255
+@@ -35,7 +40,7 @@
+ 
+ @triton.jit
+ def mxfp8_epilogue(
+-    y, row, Q, S, K: tl.constexpr, BLOCK: tl.constexpr, GROUPS: tl.constexpr, g_lo, g_hi
++    y, row, Q, S, K: tl.constexpr, BLOCK: tl.constexpr, GROUPS: tl.constexpr, g_lo, g_hi, ALIGN_A7: tl.constexpr = False
+ ):
+     # Stores only groups in [g_lo, g_hi) so a row can be split across CTAs.
+     GP: tl.constexpr = BLOCK // 32
+@@ -45,7 +50,7 @@
+     idx = g[:, None] * 32 + e[None, :]
+     v = tl.reshape(y.to(tl.float32), (GP, 32))
+     amax = tl.max(tl.abs(v), 1)
+-    sf, scale = ue8m0_scale(amax)
++    sf, scale = ue8m0_scale(amax, ALIGN_A7)
+     q = tl.minimum(tl.maximum(v * scale[:, None], -448.0), 448.0).to(tl.float8e4nv)
+     tl.store(Q + row * K + idx, q, gmask[:, None])
+     tile = (row // 128) * (((GROUPS + 3) // 4) * 512)
+--- a/python/sglang/kernels/ops/quantization/mxfp8_swizzled_triton.py
++++ b/python/sglang/kernels/ops/quantization/mxfp8_swizzled_triton.py
+@@ -15,6 +15,9 @@
+ from __future__ import annotations
+ 
+ import torch
++from sglang.srt.layers.attention.dsv4 import di_align
++from sglang.kernels.ops.quantization.mxfp8_epilogue import ue8m0_scale
++
+ import triton
+ import triton.language as tl
+ 
+@@ -56,6 +59,7 @@
+     stride_x,
+     BLOCK_R: tl.constexpr,
+     G: tl.constexpr,
++    ALIGN_A7: tl.constexpr = False,
+ ):
+     pid_r = tl.program_id(0)
+     pid_g = tl.program_id(1)
+@@ -69,7 +73,10 @@
+     ).to(tl.float32)
+     x3 = tl.reshape(x, [BLOCK_R, G, 32])
+     amax = tl.max(tl.abs(x3), axis=2)
+-    sbyte, inv = _mx_e8m0_from_amax(amax)
++    if ALIGN_A7:
++        sbyte, inv = ue8m0_scale(amax, True)
++    else:
++        sbyte, inv = _mx_e8m0_from_amax(amax)
+     q = tl.reshape(x3 * inv[:, :, None], [BLOCK_R, G * 32])
+     tl.store(
+         q_ptr + r[:, None].to(tl.int64) * k + c[None, :],
+@@ -77,6 +84,9 @@
+         mask=mask,
+     )
+     smask = rmask[:, None] & (g < n_groups)[None, :]
++    if ALIGN_A7:
++        smask = (r < tl.cdiv(rows, 128) * 128)[:, None] & (g < n_col_blocks * 4)[None, :]
++        sbyte = tl.where(rmask[:, None] & (g < n_groups)[None, :], sbyte, 0)
+     tl.store(
+         s_ptr + _mx_scale_offsets(r[:, None], g[None, :], n_col_blocks),
+         sbyte.to(tl.uint8),
+@@ -105,18 +115,20 @@
+     return q, s
+ 
+ 
+-def mxfp8_quantize_swizzled(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
++def mxfp8_quantize_swizzled(x: torch.Tensor, *, align_a7: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
+     """bf16 ``[rows, k]`` -> ``(fp8 [rows, k], swizzled e8m0 scale bytes)``."""
+     if not can_use_mxfp8_swizzled(x):
+         raise ValueError("expected a row-major bf16 CUDA [rows, k] tensor, k % 32 == 0")
+     rows, k = x.shape
+-    q, s = _alloc(rows, k, x.device)
++    q, s = _alloc(rows, k, x.device, zero_scales=not align_a7)
+     if rows == 0:
+         return q, s
+     n_groups = k // 32
+     n_col_blocks = triton.cdiv(n_groups, 4)
+-    block_r, g = 32, 8
+-    grid = (triton.cdiv(rows, block_r), triton.cdiv(n_groups, g))
++    # A7 small-M tiles keep enough CTAs resident on SM120. Off layout/grid is unchanged.
++    block_r, g = (4, 8) if align_a7 and rows <= 1024 else (32, 8)
++    grid_rows = triton.cdiv(rows, 128) * 128 if align_a7 else rows
++    grid = (triton.cdiv(grid_rows, block_r), triton.cdiv(n_groups, g))
+     with torch.get_device_module().device(x.device):
+         _mxfp8_quant_kernel[grid](
+             x,
+@@ -129,6 +141,7 @@
+             x.stride(0),
+             BLOCK_R=block_r,
+             G=g,
++            ALIGN_A7=align_a7,
+             num_warps=4,
+         )
+     return q, s
+--- a/python/sglang/srt/layers/quantization/fp8_utils.py
++++ b/python/sglang/srt/layers/quantization/fp8_utils.py
+@@ -2234,9 +2234,14 @@
+         raise TypeError("MXFP8 weight must be FP8 E4M3.")
+ 
+     if input_scale is None:
+-        q_input, x_scale_u8 = flashinfer_mxfp8_quantize(
+-            input_2d, is_sf_swizzled_layout=True, alignment=32
+-        )
++        from sglang.srt.layers.attention.dsv4 import di_align
++        if di_align.enabled("A7"):
++            from sglang.kernels.ops.quantization.mxfp8_swizzled_triton import mxfp8_quantize_swizzled
++            q_input, x_scale_u8 = mxfp8_quantize_swizzled(input_2d, align_a7=True)
++        else:
++            q_input, x_scale_u8 = flashinfer_mxfp8_quantize(
++                input_2d, is_sf_swizzled_layout=True, alignment=32
++            )
+     else:
+         q_input = input_2d
+         x_scale_u8 = input_scale

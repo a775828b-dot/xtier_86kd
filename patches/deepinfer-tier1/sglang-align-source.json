@@ -1,0 +1,121 @@
+{
+  "utc": "2026-11-16T13:13:21.028585+00:00",
+  "source": "/data/src/sglang-align/python/sglang",
+  "baseline": "/data/src/sglang-dev/python/sglang",
+  "task_sha256": "3585a603555a8f93242f182c5150b3a5e1a4daf7740bea262408112914087856",
+  "changed_files": [
+    {
+      "path": "kernels/jit/csrc/deepseek_v4/fp4_indexer_rope.cuh",
+      "before_sha256": "30117159b16462e3508ee85a7b25b8e38e95462754507d77593e98f0cadca8d4",
+      "after_sha256": "1448b60777b6f587069d14b7239f98b7129cc27bf21ac123f0191ed1355cbdfd"
+    },
+    {
+      "path": "kernels/jit/include/sgl_kernel/deepseek_v4/kv_layout.cuh",
+      "before_sha256": "4c6a1f9636a0d23e751910dacabb80a88d1d59dea129b20a92fea8863d9f0bea",
+      "after_sha256": "f00a9d779ff94b5703294147ddce019718ac6b1b0a7f40c1c8b470a05f77f151"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/attn.py",
+      "before_sha256": "86cc4947862de5244b880d9536602b4aaf141d0ac24c996ca9aec95aaaede14f",
+      "after_sha256": "12a6d3030e02893718f9e090ac1e3fdb675f1a55982aab38dfc4c90f74540784"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/compress.py",
+      "before_sha256": "2bc9c870595b7bd81cc7db15baf98ff39cfa4ba2d43b96609db86ed02140b97f",
+      "after_sha256": "f01da4c82ae20185a5c4747eee93e7d01c3e6b957bd52a65dfe19a49eff26c4e"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/fp4_indexer.py",
+      "before_sha256": "bf278dba9457b50a46b9d9860a81fece5d9c27c3b826e0518078b68cf93ec8b0",
+      "after_sha256": "0f230c8570777341d11340b1a96a547eb74592d644fb732ab46eb28625c43ed7"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/fp4_indexer_rope.py",
+      "before_sha256": "ddbce3ca53ec61720f686ef17ce1a2db945ecaa10524d19e20fc0f92f731677a",
+      "after_sha256": "16787081bb2ade44692df6d6a14a817a917037b842d6bcd952d5355639e445b4"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/kv_align_jit.py",
+      "before_sha256": null,
+      "after_sha256": "24e823490884bb77be0efc0d8cf5358b1a9bb619b6342f1bb5aaf88629e29f6f"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/low_ratio_compress.py",
+      "before_sha256": "a48322dd03727a5fc6b905588fb7aa4c291150b09139bd4fa190edf7c8b38924",
+      "after_sha256": "bda1a1f66b952bc8bd211e1ac914215b2fcea3ac2f6153aa5add7d0881fec33a"
+    },
+    {
+      "path": "kernels/ops/attention/dsv4/norm_rope.py",
+      "before_sha256": "b10b040ba5d1ddc98522807e098daac8bb901899ee9ea2dd1042561aed9a6207",
+      "after_sha256": "2dbfed7eec9e937a19c89eed43614ecf12273ba6113dc7cbbcad70923738c4aa"
+    },
+    {
+      "path": "kernels/ops/gemm/dsv4_wo_a.py",
+      "before_sha256": "1ccabed6d25acab46178a3f3d87b4c885f089749d7308bdac890d4be1d670313",
+      "after_sha256": "22f7c779a3c0479c933787c4fae2ce57b1827260647b3c0c18fd67cf15f430b0"
+    },
+    {
+      "path": "kernels/ops/layernorm/hc_combine_norm.py",
+      "before_sha256": "33e1140e940bc5a3670ef132b01cbbf57b89edc480756b2555d2418ac756f6ba",
+      "after_sha256": "5dd9cf764e2eb2b38e13a2566f4d9575faa5d4508ee7bfcdd768edf9690b6597"
+    },
+    {
+      "path": "kernels/ops/layernorm/rmsnorm_mxfp8.py",
+      "before_sha256": "d5775e4b66c5cd2a55c45314b372ddeab4c1e897655b69b0b2f9c40ca166f239",
+      "after_sha256": "ee099383dc578968fdc0a5f55770e51e3d2c5784013e567fef0c2a3198a41fda"
+    },
+    {
+      "path": "kernels/ops/quantization/fp4_indexer_quant.py",
+      "before_sha256": "404d2d01a4672d65a356501411561135118f0e36aead0756cb5d5a881970733d",
+      "after_sha256": "901ed6fa3c1c3f3c492f456f0659f3734f1b7de73b7a534187cccd32ed531e4e"
+    },
+    {
+      "path": "kernels/ops/quantization/mxfp8_epilogue.py",
+      "before_sha256": "58b908541a6df1d0ab5bbaf0ebeac8251d0f8f5cbe469ebc05487874d1ccc508",
+      "after_sha256": "50cbf3e8712d0506db5f0e6c523995d6d32a4ccbc62cf93c6a77caa6f0fccfb1"
+    },
+    {
+      "path": "kernels/ops/quantization/mxfp8_swizzled_triton.py",
+      "before_sha256": "95859f64d9766e898bfcf9dc7c2712a17720a04861e8d62a97a9681ccc9c1cc3",
+      "after_sha256": "c878cd458caf07be1d72f14574132905f59d8a7aeb8d1b7c8112cd424ecb1975"
+    },
+    {
+      "path": "srt/environ.py",
+      "before_sha256": "2d66af1f1c0cdb623f922476a2d9a0d11f3510f6b5f0f6c39554f10f615192f2",
+      "after_sha256": "7fdc5f6e6cad0e5641b013f30aa7e0a850cfbe170ad8a2dd807fb057236067a2"
+    },
+    {
+      "path": "srt/layers/attention/dsv4/di_align.py",
+      "before_sha256": null,
+      "after_sha256": "e770ec40e1697b6ec061714edbf245c5c7621613877b95bc489f4cb44f6f65ba"
+    },
+    {
+      "path": "srt/layers/attention/dsv4/dsv41_sparse.py",
+      "before_sha256": "5be8cb11612033154809968568bdf7be9e46e481a91deff02bb4a0071952280d",
+      "after_sha256": "8bbf31bf9fc1517115b88478622e0f7c2ebe1584e0277711d53325ec59bfb6f6"
+    },
+    {
+      "path": "srt/layers/quantization/fp8_utils.py",
+      "before_sha256": "1a7a63777daf4087e7c98222a425a7eb3f369050a9df1b9e738f0497ec5d5e82",
+      "after_sha256": "24f3efa325b502cc0b4489362e59011b454ac3ff5512cbad72ec57b2a551feca"
+    }
+  ],
+  "alignment_flags": {
+    "SGLANG_DI_ALIGN_A8": "0",
+    "SGLANG_DI_ALIGN_A7": "1",
+    "SGLANG_DI_ALIGN_A5": "0",
+    "SGLANG_DI_ALIGN_A4": "0",
+    "SGLANG_DI_ALIGN_A3": "1",
+    "SGLANG_DI_ALIGN_A2": "1",
+    "SGLANG_DI_ALIGN_A1": "1",
+    "SGLANG_DI_ALIGN": "0"
+  },
+  "parameters": {
+    "CHUNK": "32768",
+    "INTERVAL": "10",
+    "MAX_RUNNING": "64",
+    "MEM_FRACTION_STATIC": "0.85",
+    "CUDA_GRAPH_MAX_BS_DECODE": "64",
+    "SGLANG_RAGGED_VERIFY_MODE": "compact"
+  }
+}

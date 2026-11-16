@@ -1,58 +1,106 @@
-# xtier_86kd
+# xtier_86kd：TF500（8 × RTX PRO 6000D）DeepSeek-V4.1-Flash TP8 加速包、对齐补丁与实测归档
 
-## tf500 TP4 混合推理
+本仓库专用于 **`tf500`（8 × NVIDIA RTX PRO 6000D，Blackwell SM120，双路 Xeon 6737P + PCIe 5.0）** 上的 **`DeepSeek-V4.1-Flash-1017` 全显存 TP8 / Attention DP8 高性能推理部署**。
 
-`deploy/start-xtier-tp4.sh` 在 GPU 0–3 与 CPU/NUMA 0 上运行原版 XTier 混合专家引擎，独立监听 `30001`。它不启用本仓库的 TP8 加速插件；原 TP8 启动台卡片和服务配置保留。配置、单 NUMA TP4 补丁及运行检查见 [`deploy/README-tf500-tp4.md`](deploy/README-tf500-tp4.md)，单发验收见 [`deploy/tf500-tp4-single.md`](deploy/tf500-tp4-single.md)。
+仓库集中收录了：
+1. **`xtier_86kd` 独立加速插件**（无需启用 XTier CPU/GPU 混合专家引擎，直接挂载在 SGLang + Humming MoE 之上；旧 TP4 混合方案已废弃移除）；
+2. **SM120 官方混合 KV 缓存补丁**（主压缩 KV 为 `FP4 E2M1 + E4M3 scale` 288B/条，SWA 滑动窗口为 `FP8 E4M3 + UE8M0 scale` 528B/条）；
+3. **DeepInfer 第一档精度对齐补丁（A1 / A2 / A3 / A7）** 与 **外置无侵入 `repair-a2-reader`（SM120 Split-K FP32 中间累加修复）**；
+4. **TF500 启动台 WebUI（`:8100`）、在线测速面板与鉴权 API 网关（`:8000`）**；
+5. **从装机前置检查到最新 3 小时精简配对验证的全阶段实测报告与结构化 JSON 数据**。
 
-DeepSeek V4.1 Flash 1017 acceleration for SGLang tensor parallelism 8 on eight RTX PRO 6000D GPUs. This project ports the DeepSeek pack from [XTier](https://github.com/a775828b-dot/xtier) without enabling XTier's hybrid MoE engine. SGLang's Humming MoE runner remains in use.
+---
 
-The complete DeepSeek pack is in `src/xtier_86kd/packs/deepseek_v4`. Its applicable hooks cover DSpark verification, paged decode indexing, FP8 GEMM tuning, FlashInfer MXFP8 small batch, attention `wo_a`, and draft FP8 LM head. Current SGLang already selects dense-block candidates on SM120. The legacy candidate override is retained behind `XTIER_86KD_LEGACY_INDEXER=1` for older commits and must stay off on the tested commit. Legacy GPU hooks and the optional Engram NVMe row store are retained. The row store's C++ source is in `csrc/tables`; it is inactive with the default host Engram table.
+## 一、当前基线架构与核心实测指标（`sd-dev3h-r1-p1`）
 
-## Install on the server
+### 1.1 运行配置栈
+
+| 维度 | 当前验证配置 |
+|---|---|
+| 硬件平台 | `8 × NVIDIA RTX PRO 6000D`（每卡 84 GiB GDDR7，SM120，双路 NUMA，跨 CPU Socket `NCCL_P2P_LEVEL=SYS`） |
+| 并行策略 | `--tp-size 8 --attn-dp-size 8 --enable-dp-lm-head` + `SGLANG_DP_USE_GATHERV=1` + `SGLANG_DP_USE_REDUCE_SCATTER=1` |
+| MoE / GEMM | `--moe-runner-backend humming` + `--fp8-gemm-backend flashinfer_cutlass` + `XTIER_86KD=1`（Engram 表驻留主机 1 TiB 内存） |
+| 投机解码 | `--speculative-algorithm DSPARK`（`block=5, draft=6`，`compact` 变长验证 + 本机标定表 `bench/86kd-sps-6000d.json`） |
+| KV 缓存与容量 | `MEM_FRACTION_STATIC=0.85`、`--swa-prefix-tails 384`、上下文上限 `1,048,576`；**实测全局主 KV `67,450,880` token**（每 DP `8,431,360`），每 DP SWA 池 `165,376` token |
+| DeepInfer 对齐 | `SGLANG_DI_ALIGN_A1=1 A2=1 A3=1 A7=1`（`SGLANG_DI_ALIGN=0`，`A4/A5/A8=0`）+ `deploy/repair-a2-reader` |
+
+### 1.2 全阶段演进与关键实测成绩总览
+
+> 注：不同阶段使用了不同 KV 位宽、`CASE_ID` 或预热策略，跨阶段横向引用须结合对应报告中的测试条件；最新 `sd-dev3h-r1` 为单轮限时开发配对验证（非 3 轮中位数或 1M 正式全量验收）。
+
+| 阶段与报告入口 | 配置要点 | 并发 1 冷 P (`tok/s`) | 并发 32/64 冷 P (`tok/s`) | 缓存 D (`tok/s`) | 关键结论 |
+|---|---|---:|---:|---:|---|
+| **01. 装机检查与纯 TP8 初测**<br>[`01-tf500-前置检查与测速.md`](bench/reports/01-tf500-前置检查与测速.md) | 纯 TP8（无 DP）、FP8 KV、`mem=0.78` | `11,626`（原版）<br>`12,386`（86KD 变长热态） | 32 路：`13,976` → `14,105` | 32 路共享前缀：`1,051` → **`2,678`（`+154.8%`）** | 8 卡硬件/P2P/NVMe 全部达标；86KD 变长验证使 32 路 Decode 翻倍以上，但纯 TP8 全局 KV 仅 `5.19M` |
+| **02. 86KD 32K/1K 专项对比**<br>[`02-xtier_86kd-32k1k-对比.md`](bench/reports/02-xtier_86kd-32k1k-对比.md) | 原版静态 vs 86KD 静态 vs 86KD 变长（1–32 并发） | `12,386`（首轮冷启动 `4,325`） | 16 路：`14,084`<br>32 路：`14,105` | 8 路：`1,589`（`+145.1%`）<br>32 路：`2,678` | 确立 `XTIER_86KD=1` + `compact` 变长验证 + 本机 SPS 表为基线 |
+| **03. DP8 + Gatherv + RS 优化**<br>[`03-tp8-dp8-fp8kv-阶段报告.md`](bench/reports/03-tp8-dp8-fp8kv-阶段报告.md) | `attn-dp=8` + `DP LM head` + `CHUNK=32K` + `gatherv` + `RS` + `min-free-slots-delay=1` | `5,405`（DP8 单卡承载） | **64 路：`20,421–20,700`** | **64 路共享前缀：`4,036–4,074`**<br>64 路短提示：`2,919` | `gatherv` 将 64 路冷 P 由 `16.2K` 提升 `+26.4%` 至 `20.5K+`；全局 KV 扩至 `20.89M` |
+| **04. DeepInfer 第一档单元与 U5 修复**<br>[`04-deepinfer-tier1-单元验证报告.md`](bench/reports/04-deepinfer-tier1-单元验证报告.md)<br>[`repair-fp32mid-r3-summary.json`](bench/reports/data/repair-fp32mid-r3-summary.json) | `A1/A2/A3/A7` 逐字节对齐 + 外置 `repair-a2-reader`（FP32 `mid_out`） | — | — | Reader CUDA Graph 加速 **`10.2%–18.0%`**（最大回退 `0.00%`） | 解决原生 FlashInfer Split-K 二次 BF16 截断误差：`8×64` RMS `0.002128 -> 0.001586`（`-25.4%`），`48×64` `0.002480 -> 0.001754`（`-29.3%`），全 6 形状通过 U5 |
+| **05. FP4 KV + 缓存修复 + 3h 配对整模验证**<br>[`05-dev3h-配对开发验证报告-20261116.md`](bench/reports/05-dev3h-配对开发验证报告-20261116.md)<br>[`sd-dev3h-r1-analysis.json`](bench/reports/data/sd-dev3h-r1-analysis.json) | `mem=0.85`、`tails=384`（主 KV **`67.45M`**），`p0`（全关）vs `p1`（`A1/2/3/7` + `repair-a2-reader`） | `2,131`（`p0`）→ **`2,315`**（`p1`，冷首轮含 JIT；热态 `~8,350`） | **64 路 32K：`20,543`**<br>**64×128K：`20,660`** | **64 路 32K：`4,214`**（`p0: 4,359`）<br>**64×128K 纯 D：`3,567`（`+5.43%`）**<br>64 路短提示：`2,922` | `64×128K` 命中率 **`99.79%`**（双侧 14.4s+ 64 路共同窗口），最低空闲显存 **`4,858 MiB`（`4.744 GiB`）**，3 段 PPL 变化仅 **`+0.067%`**，全程 0 错 |
+
+---
+
+## 二、仓库目录结构
+
+```text
+xtier_86kd/
+├── src/xtier_86kd/                  # 86KD TP8 独立加速插件源码（DSpark 变长验证、分页索引器、FP8 wo_a、MXFP8 tile4 等）
+├── csrc/                            # 可选 NVMe Engram 行存原生扩展源码（1TiB 主机内存下默认驻留 RAM 无需启用）
+├── patches/
+│   ├── sm120-official-fp4-kv.patch  # SM120 官方混合 V4.1 FP4 主 KV + FP8 SWA 补丁
+│   └── deepinfer-tier1/             # DeepInfer 第一档（A1/A2/A3/A7）分项 diff 与 sglang-align 完整补丁快照
+├── deploy/
+│   ├── tf500_console.py             # :8100 启动台后端（仅保留纯 TP8 模型卡片，支持一键切换 DeepInfer 对齐开/关）
+│   ├── tf500_console_ui.py          # 启动台前端渲染模块
+│   ├── tf500_api_proxy.py           # :8000 OpenAI 兼容鉴权网关（自动探活并转发 :30000 TP8 服务，脱敏计费统计）
+│   ├── tf500_proxy_admin.py         # /proxy 密钥管理页与多租户配额管理（tf500_proxy_keys.py）
+│   ├── tf500_benchmark.py           # /benchmark 在线并发与 Agent 测速后端及 UI（tf500_benchmark_ui.py）
+│   ├── tf500_server_info.py         # /server 八卡实时功耗、频率、显存与系统遥测页
+│   ├── start-tp8-fp4-card.sh        # 生产卡片对应的 TP8 SGLang 真实启动脚本
+│   ├── start-console.sh             # :8100 控制台守护启动脚本
+│   ├── start-api-proxy.sh           # :8000 API 网关启动脚本
+│   └── repair-a2-reader/            # 外置零侵入 A2 Split-K FP32-mid CUDA 内核与 sitecustomize 自动挂载钩子
+├── bench/
+│   ├── bench_serving.py             # 多并发流式冷 Prefill / 共享前缀 Decode 两阶段测速工具
+│   ├── agent_bench.py               # 多会话长上下文工具调用 Agent 基准
+│   ├── sps_profile.py               # 本机 DSpark 变长验证成本标定工具与实测表 86kd-sps-6000d.json
+│   ├── 32k1k-ab.md                  # 早期 86KD 静态/变长 32K/1K 对比与原始 JSON
+│   └── reports/                     # 全阶段中文实测报告归档（01–05）与 data/ 核心 JSON 证据（含 SD10/SD13 硬件峰值）
+└── tests/                           # 代理网关、密钥配额、测速面板与系统监控本地单元测试
+```
+
+---
+
+## 三、安装、部署与日常使用
+
+### 1. 安装 `xtier_86kd` 插件到环境
 
 ```bash
 /data/xtier-env/bin/pip install -e /data/src/xtier_86kd --no-deps
 ```
 
-Set `XTIER=0` and `XTIER_86KD=1` in the existing SGLang startup environment. Existing `XTIER_DS_*`, `XTIER_MXFP8_B12X_ROWS`, `XTIER_DRAFT_LMHEAD_FP8`, and related pack switches remain supported. Use the same SGLang commit and serving parameters as the baseline for an A/B benchmark. `XTIER_86KD=0` removes all hooks without reinstalling.
+启动 SGLang 时保持 `XTIER=0`（不接管混合专家）并设置 `XTIER_86KD=1` 启用本仓库 TP8 加速钩子；如需回退对比，设 `XTIER_86KD=0` 即可零侵入关闭全部钩子。
 
-The FP8 tuned config JSONs were measured for RTX PRO 5000; they remain in the pack but do not match the 6000D device name. New 6000D tuning must be measured before adding configs.
+### 2. WebUI 启动台（`127.0.0.1:8100`）与 API 网关（`:8000`）
 
-## tf500 WebUI
+- **访问启动台**：在本地开发机执行 SSH 端口转发 `ssh -L 8100:127.0.0.1:8100 <user>@<TF500_IP>`，浏览器打开 `http://127.0.0.1:8100/`。
+  - `/`：**启动台**（展示 8 卡实时状态、参数下拉选择与一键启停；默认 `mem=0.85, tails=384`，支持切换 `DeepInfer 第一档对齐：开 / 关`）；
+  - `/benchmark`：**在线测速**（支持 1–64 并发流式测速与长上下文 Agent 测速）；
+  - `/proxy`：**API 网关与子密钥管理**（支持创建带有效期和请求次数配额的客户端密钥，密钥密文存储于 `/data/xtier-86kd-console/`，绝不入库）；
+  - `/server`：**服务器硬件监控**（每 5 秒刷新单卡功耗、频率、显存、温度与主机负载）。
+- **OpenAI 兼容调用入口**：
+  - Base URL：`http://<TF500_IP>:8000/v1`
+  - Model：`DeepSeek-V4.1-Flash-1017`
+  - API Key：在 `/proxy` 页面生成客户端密钥，或在服务器读取 `/data/xtier-86kd-console/proxy-api-key`（请勿将密钥写入任何仓库文件或公开日志）。
 
-`deploy/tf500_console.py` reuses the XTier console page and controls this host's TP8 SGLang launch script. It detects the existing `sglang-ds41.service` without restarting the model. The page listens only on `127.0.0.1:8100`; connect from a workstation with `ssh -L 8100:127.0.0.1:8100 <user>@<TF500_IP>`, then open `http://127.0.0.1:8100/`.
+### 3. 运行本地单元测试
 
-The page shows the current system service, GPU status and recent decode logs. Its defaults reproduce the present 86KD + DSpark compact configuration. Start first terminates the current instance, waits for GPU memory to release, then starts `/data/src/start-sglang-plan.sh` with the selected settings. Stop terminates the current instance. The API key is read from `/data/sglang-api-key` only by the launch script and authenticated health probe; the WebUI does not return it. A console-started model runs in an independent user session, while the original system service still starts with its default settings after a host reboot. A console-started model does not inherit the system service's `Restart=on-failure` policy.
-
-The installed launch entry is `$HOME/start-xtier-86kd-console.sh`, registered in the `<user>` crontab with `@reboot`. Console logs and state live under `/data/xtier-86kd-console/`. No external WebUI dependencies are required beyond the existing XTier installation.
-
-The WebUI has four separate pages selected from navigation cards: the launch console `/`, API benchmark `/benchmark`, API proxy settings `/proxy`, and read-only server information `/server`. The server page refreshes every five seconds and shows per-GPU utilization, VRAM, power, temperature and clock, plus CPU, memory, disk, network, uptime and model state. The benchmark supports 1, 4, 8, 16, and 32 concurrent requests. It uses 4K, 8K, or 32K input, 256, 512, or 1024 output tokens, and one or two rounds. The capacity check reads the backend directly; inference requests use the API proxy. The two-phase run clears the cache between cold prefill and shared-prefix decode, so use it when no other inference work is active.
-
-The separate API proxy listens on `<TF500_IP>:8000`. Clients use `http://<TF500_IP>:8000/v1` and a Bearer key from `/data/xtier-86kd-console/proxy-api-key` (created with mode 0600 on first start). The proxy forwards only `/v1/` paths, accepts `Authorization: Bearer` or `x-api-key`, rewrites authentication to the backend key, streams responses, and records request metadata without prompts, responses, keys, or client addresses. `GET /health` reports whether the backend is reachable. The proxy starts on reboot via `deploy/start-api-proxy.sh`; the backend keeps its own lifecycle.
-
-For an OpenAI-compatible client, set Base URL to `http://<TF500_IP>:8000/v1`, model to `DeepSeek-V4.1-Flash-1017`, and API key to the contents of `/data/xtier-86kd-console/proxy-api-key` on this host. The proxy key is separate from `/data/sglang-api-key`. Retrieve it over SSH with `ssh <user>@<TF500_IP> 'cat /data/xtier-86kd-console/proxy-api-key'`; keep it out of shared logs and screenshots.
-
-The WebUI links to `/proxy`, a loopback-only API proxy configuration page. It shows the endpoint, model, proxy/backend status, self-test, per-key and recent request usage. Create client keys there with a name, expiry (permanent, 1, 7, 30, or 90 days), and a request-count quota (0 means unlimited). The new key is shown once; save it then. Deleting a client key invalidates it immediately. The original `proxy-api-key` remains a permanent system key for internal benchmarking and is never shown in full on the page. Client keys are stored in `/data/xtier-86kd-console/proxy-keys.json` with mode 0600; the 8000 proxy reads changes on each request, without restarting. Quotas are measured in request counts; no currency pricing is applied.
-
-The model-independent SM120 FlashInfer MXFP8 prefill tile hook is enabled by default in 86KD. It selects tactic 4 only for fallback CUTLASS MXFP8 calls with at least 256 rows and the expected six-tactic runner. SGLang pins DeepSeek's MXFP8 calls, so the pinned exception is limited to TP8's (K=288, N=5120) expert down projection. On this RTX 6000D, tactic 4 and the pinned fallback were bitwise equal at M=256/512/1024/2048; M=2048's isolated GEMM time was 0.0345 vs 0.0356 ms (one short run, not a serving speed claim). Set `XTIER_86KD_MXFP8_PREFILL_TILE=0` to turn it off. The existing 86KD compact 32K/1K results remain the development baseline; enabling this hook does not change those recorded measurements.
-
-The optional NVMe Engram row store requires a small native library. Build it only when using `XTIER_ENGRAM_ROWS=nvme`:
+本地单元测试全部使用内存级模拟服务，不会触碰在线 `:30000` 推理进程或占用 GPU：
 
 ```bash
-cmake -S csrc -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
-mkdir -p src/xtier_86kd/lib
-cp build/libxtier_tables.so src/xtier_86kd/lib/
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-For this 1 TiB RAM host, leave `XTIER_ENGRAM_ROWS` unset. SGLang stores Engram on the CPU and the other model weights on the eight GPUs.
+---
 
-## Benchmarks
+## 四、许可证
 
-`bench/bench_serving.py` measures concurrent streaming requests. For the development sweep, use `--two-phase --shared-decode-prefix --prompt-tokens 32768 --output-tokens 1024 --concurrencies 1,4,8,16,32 --rounds 1` with the same model, server parameters, and corpus. Each round gets a unique prefix to prevent reuse of earlier KV cache entries. The first phase uses independent cold prompts and one output token to measure prefill. The second phase seeds one 32K corpus and has the requests share it while producing 1024 tokens; this is needed because the tested server retains only about 20 independent 32K prefixes even with a reported 5,247,744-token full KV pool. `prefill_window_tps_est` is total cold input tokens divided by the interval from the first request start to the last first token. `decode_window_tps` is total output tokens divided by the interval from the first to last streamed output token. `sum_request_decode_tps_est` sums each request's own active decode rate. The script reads each response's `spec_verify_ct`, falling back to the `spec_verify_calls_total` metric, to calculate accepted tokens per step and `mean_request_ms_per_step_est` from the sum of each request's decode duration. That elapsed-time step estimate includes scheduling gaps, not just the GPU kernel. Report success counts and cached token counts with all rates.
-
-`bench/agent_bench.py` is adapted from XTier's coding-agent benchmark. It supports `--api-key-file` for this server and stores only the file path, never the secret. Supply `--repo /data/src/xtier --lsglang /data/src/sglang-xtier --tokenizer /data/models/DeepSeek-V4.1-Flash-1017`. It reports per-request cold prefill, cached TTFT, decode throughput, and DSpark verify step time. For compact verification, build an SPS cost table on this machine with `bench/sps_profile.py` before enabling its table path; a table from another GPU is not valid calibration.
-
-The measured development sweep and its raw JSON files are in [`bench/32k1k-ab.md`](bench/32k1k-ab.md). The report includes prefill and cached decode throughput, accepted tokens per verification step, per-request milliseconds per step, and full KV pool size for 1, 4, 8, 16, and 32 requests. The machine-specific SPS table is [`bench/86kd-sps-6000d.json`](bench/86kd-sps-6000d.json). On tf500, setting `SGLANG_RAGGED_VERIFY_MODE=compact` and `SPS_TABLE=/data/bench/86kd-sps-6000d.json` enables compact verification with the measured table; the existing launch script maps these to the SGLang flags. The baseline and acceleration sweep used one round per concurrency, so repeat with fixed prompts before treating small differences as robust.
-
-Source license: Apache-2.0; see `LICENSE`.
+Apache-2.0，详见 [`LICENSE`](LICENSE)。

@@ -1,0 +1,74 @@
+{
+  "baseline": "align-repair-cache-m85-r3",
+  "candidate": "align-cache-tails384-r1",
+  "status": "diagnostic_complete",
+  "comparisons": [
+    {
+      "concurrency": 8,
+      "old_hit_pct": 99.79,
+      "new_hit_pct": 99.79,
+      "all_requests_success": true,
+      "requests_identical_output_hashes": 8,
+      "requests_same_input_lengths": true,
+      "requests_count": 8,
+      "prefill_requests_identical_output_hashes": 8,
+      "prefill_requests_same_input_lengths": true,
+      "prefill_requests_count": 8,
+      "window_available_tokens_at_seed_end": [
+        148992.0,
+        148992.0,
+        148992.0,
+        148992.0,
+        148992.0,
+        148992.0,
+        148992.0,
+        148992.0
+      ],
+      "window_evictable_tokens_at_seed_end": [
+        16384.0,
+        16384.0,
+        16384.0,
+        16384.0,
+        16384.0,
+        16384.0,
+        16384.0,
+        16384.0
+      ]
+    },
+    {
+      "concurrency": 64,
+      "old_hit_pct": 12.47,
+      "new_hit_pct": 99.79,
+      "all_requests_success": true,
+      "requests_identical_output_hashes": 64,
+      "requests_same_input_lengths": true,
+      "requests_count": 64,
+      "prefill_requests_identical_output_hashes": 64,
+      "prefill_requests_same_input_lengths": true,
+      "prefill_requests_count": 64,
+      "window_available_tokens_at_seed_end": [
+        27136.0,
+        27136.0,
+        27136.0,
+        27136.0,
+        27136.0,
+        27136.0,
+        27136.0,
+        27136.0
+      ],
+      "window_evictable_tokens_at_seed_end": [
+        138240.0,
+        138240.0,
+        138240.0,
+        138240.0,
+        138240.0,
+        138240.0,
+        138240.0,
+        138240.0
+      ]
+    }
+  ],
+  "cache_gate_passed": true,
+  "output_hashes_identical": true,
+  "minimum_free_mib": 3224.0
+}

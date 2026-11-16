@@ -1,0 +1,31 @@
+{
+  "exponent_cases": 32640,
+  "exponent_mismatches": 0,
+  "sources": [
+    {
+      "file": "kernels/ops/attention/dsv4/fp4_indexer.py",
+      "before_sha256": "bf278dba9457b50a46b9d9860a81fece5d9c27c3b826e0518078b68cf93ec8b0",
+      "after_sha256": "0f230c8570777341d11340b1a96a547eb74592d644fb732ab46eb28625c43ed7"
+    },
+    {
+      "file": "kernels/ops/attention/dsv4/fp4_indexer_rope.py",
+      "before_sha256": "ddbce3ca53ec61720f686ef17ce1a2db945ecaa10524d19e20fc0f92f731677a",
+      "after_sha256": "16787081bb2ade44692df6d6a14a817a917037b842d6bcd952d5355639e445b4"
+    },
+    {
+      "file": "kernels/jit/csrc/deepseek_v4/fp4_indexer_rope.cuh",
+      "before_sha256": "30117159b16462e3508ee85a7b25b8e38e95462754507d77593e98f0cadca8d4",
+      "after_sha256": "1448b60777b6f587069d14b7239f98b7129cc27bf21ac123f0191ed1355cbdfd"
+    },
+    {
+      "file": "kernels/ops/quantization/fp4_indexer_quant.py",
+      "before_sha256": "404d2d01a4672d65a356501411561135118f0e36aead0756cb5d5a881970733d",
+      "after_sha256": "901ed6fa3c1c3f3c492f456f0659f3734f1b7de73b7a534187cccd32ed531e4e"
+    },
+    {
+      "file": "srt/layers/attention/dsv4/dsv41_sparse.py",
+      "before_sha256": "5be8cb11612033154809968568bdf7be9e46e481a91deff02bb4a0071952280d",
+      "after_sha256": "8bbf31bf9fc1517115b88478622e0f7c2ebe1584e0277711d53325ec59bfb6f6"
+    }
+  ]
+}

@@ -44,4 +44,3 @@ full KV 为 SGLang 的 `max_total_num_tokens` 指标，不代表每条独立长�
 热机复测分别为表中的 12,425/12,386 tok/s。
 
 原始 JSON 与本报告同目录；SPS 标定表为 `86kd-sps-6000d.json`。
-

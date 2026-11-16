@@ -64,4 +64,3 @@ def _choose_one(original, self, custom_op, runners, tuning_config, inputs, *args
 def install(registry, hook_type):
     if os.environ.get("XTIER_86KD_MXFP8_PREFILL_TILE", "1") != "0":
         registry.register(AUTOTUNER, _choose_one, hook_type.AROUND)
-

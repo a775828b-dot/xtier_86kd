@@ -1,0 +1,3022 @@
+{
+  "run": "sd-dev3h-r1",
+  "formal_full_acceptance": false,
+  "scope": "DEV-3H-PLAN.md slim paired development verification (single-round throughput, 3-seg PPL, 10 deterministic, smoke + 64k agent tool sample, p1 short decode/prefill profiles)",
+  "controller": {
+    "status": "collected_development_only",
+    "run": "sd-dev3h-r1",
+    "decision_path": "/data/bench/align/sd-dev3h-r1-decision.json",
+    "decision": {
+      "created_unix": 1794833578.1856265,
+      "cache_repair_verified": true,
+      "cache_evidence": "/data/bench/align/align-cache-tails384-r1-comparison.json",
+      "cache_evidence_sha256": "5d7dd6f9b6fecf95508f223b9283bd6087ec37c74c7986aa6c398e34c459a11a",
+      "cache_parameters": {
+        "mem_fraction_static": 0.85,
+        "swa_prefix_tails": 384
+      },
+      "precision_repair_verified": true,
+      "precision_evidence": "/data/bench/align/repair-fp32mid-r3-summary.json",
+      "precision_evidence_sha256": "17df4b569f45e55273ee5651aaa413449f9ad4a725ecad587ac524017f18021b",
+      "reader_hook_dir": "/data/bench/align/repair-a2-reader",
+      "reader_hook_manifest_sha256": {
+        "a2_fp32mid_reader.py": "c056c1577d9faf889079c2cfbabc1cb9247e181fae90e90a58824d1426ba9432",
+        "dsv41_bf16_fp32mid.cu": "3aef23b9705df16eda2e07fc4a8823c9aad06c03504a4e32df9548d52db7326a",
+        "sitecustomize.py": "296da87ba2143f8917f3765e78790f2c325716b429b11394b8ad4b349cc9b296"
+      },
+      "u7_supplements": {
+        "a3_3round": "/data/bench/align/tests/u7-a3-3round-r2-summary.json",
+        "a7_eager_audit": "/data/bench/align/tests/u7-a7-eager-r2-audit.json"
+      }
+    },
+    "decision_sha256": "a2d2c5ccdf48dd93382bb685e0448483a02ef0dc4ee91458d7c15e888ab02ba5",
+    "variants": [
+      {
+        "tag": "sd-dev3h-r1-p0",
+        "variant": "p0",
+        "started_unix": 1794833578.488551,
+        "server_pid": 20279,
+        "power_sampler_pid": 20283,
+        "guard_pid": 20284,
+        "exit": 0,
+        "status": "collected",
+        "gpu_release_observed": true,
+        "finished_unix": 1794834800.3929727
+      },
+      {
+        "tag": "sd-dev3h-r1-p1",
+        "variant": "p1",
+        "started_unix": 1794834800.3943448,
+        "server_pid": 28583,
+        "power_sampler_pid": 28587,
+        "guard_pid": 28588,
+        "exit": 0,
+        "status": "collected",
+        "gpu_release_observed": true,
+        "finished_unix": 1794836402.3957765
+      }
+    ],
+    "finished_unix": 1794836402.3965464,
+    "remaining_seconds": 7976.090785264969
+  },
+  "budget": {
+    "started_unix": 1794833578.4877799,
+    "deadline_unix": 1794844378.4877799,
+    "budget_seconds": 10800,
+    "status": "collection_finished",
+    "stages": [
+      {
+        "name": "sd-dev3h-r1-p0-capacity",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/capacity_summary.py",
+          "sd-dev3h-r1-p0",
+          "--live"
+        ],
+        "started_unix": 1794833816.8525667,
+        "allowance_seconds": 90,
+        "pid": 25593,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794833817.0179381
+      },
+      {
+        "name": "sd-dev3h-r1-p0-resolved",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/resolved_snapshot.py",
+          "sd-dev3h-r1-p0"
+        ],
+        "started_unix": 1794833817.0189586,
+        "allowance_seconds": 90,
+        "pid": 25594,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794833817.0846252
+      },
+      {
+        "name": "sd-dev3h-r1-p0-smoke",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/smoke_server.py",
+          "--port",
+          "30010",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p0-smoke.json"
+        ],
+        "started_unix": 1794833817.085639,
+        "allowance_seconds": 240,
+        "pid": 25595,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794833820.011549
+      },
+      {
+        "name": "sd-dev3h-r1-p0-fixture",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/tier1_precision.py",
+          "fixture"
+        ],
+        "started_unix": 1794833820.012557,
+        "allowance_seconds": 180,
+        "pid": 25607,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794833820.2785137
+      },
+      {
+        "name": "sd-dev3h-r1-p0-shared",
+        "command": [
+          "bash",
+          "/data/bench/align/bench_seeded.sh",
+          "sd-dev3h-r1-p0"
+        ],
+        "started_unix": 1794833820.2976942,
+        "allowance_seconds": 1200,
+        "pid": 25671,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834002.35485
+      },
+      {
+        "name": "sd-dev3h-r1-p0-short",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/bench_serving_dp.py",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "30010",
+          "--concurrencies",
+          "64",
+          "--rounds",
+          "1",
+          "--output-tokens",
+          "1024",
+          "--dp-ranks",
+          "8",
+          "--case-id",
+          "5d3cdbde7db2",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p0-real-short.json"
+        ],
+        "started_unix": 1794834002.3707614,
+        "allowance_seconds": 900,
+        "pid": 26421,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834025.0106614
+      },
+      {
+        "name": "sd-dev3h-r1-p0-independent",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/bench_serving_dp.py",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "30010",
+          "--two-phase",
+          "--concurrencies",
+          "64",
+          "--rounds",
+          "1",
+          "--prompt-tokens",
+          "131072",
+          "--output-tokens",
+          "1024",
+          "--dp-ranks",
+          "8",
+          "--case-id",
+          "5d3cdbde7db2",
+          "--request-timeout",
+          "3600",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p0-independent128k.json"
+        ],
+        "started_unix": 1794834025.0464532,
+        "allowance_seconds": 1500,
+        "pid": 26509,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834465.9705055
+      },
+      {
+        "name": "sd-dev3h-r1-p0-mixed",
+        "command": [
+          "bash",
+          "/data/bench/align/mixed_job.sh",
+          "sd-dev3h-r1-p0"
+        ],
+        "started_unix": 1794834465.9859362,
+        "allowance_seconds": 1200,
+        "pid": 27448,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834607.8424816
+      },
+      {
+        "name": "sd-dev3h-r1-p0-ppl",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/ppl_eval.py",
+          "--port",
+          "30010",
+          "--tokenizer",
+          "/data/models/DeepSeek-V4.1-Flash-1017",
+          "--tag",
+          "sd-dev3h-r1-p0",
+          "--segments",
+          "3",
+          "--tokens",
+          "4096",
+          "--corpus",
+          "code=/data/bench/sglang-corpus.txt",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p0-ppl"
+        ],
+        "started_unix": 1794834607.922397,
+        "allowance_seconds": 600,
+        "pid": 27923,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834618.3796785
+      },
+      {
+        "name": "sd-dev3h-r1-p0-deterministic",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/dev_slim_precision.py",
+          "sd-dev3h-r1-p0"
+        ],
+        "started_unix": 1794834618.4613426,
+        "allowance_seconds": 600,
+        "pid": 28130,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834639.643174
+      },
+      {
+        "name": "sd-dev3h-r1-p0-agent64k",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/agent_bench.py",
+          "sd-dev3h-r1-p0-agent64k",
+          "--url",
+          "http://127.0.0.1:30010",
+          "--model",
+          "DeepSeek-V4.1-Flash-1017",
+          "--tokenizer",
+          "/data/models/DeepSeek-V4.1-Flash-1017",
+          "--repo",
+          "/data/src/xtier",
+          "--lsglang",
+          "/data/src/sglang-xtier",
+          "--sessions",
+          "64k",
+          "--context-limit",
+          "1048576",
+          "--steps",
+          "16",
+          "--temperature",
+          "0",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p0-agent64k.json"
+        ],
+        "started_unix": 1794834639.6641662,
+        "allowance_seconds": 600,
+        "pid": 28224,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794834785.9472861
+      },
+      {
+        "name": "sd-dev3h-r1-p1-capacity",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/capacity_summary.py",
+          "sd-dev3h-r1-p1",
+          "--live"
+        ],
+        "started_unix": 1794835348.2742846,
+        "allowance_seconds": 90,
+        "pid": 34415,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835348.4400966
+      },
+      {
+        "name": "sd-dev3h-r1-p1-resolved",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/resolved_snapshot.py",
+          "sd-dev3h-r1-p1"
+        ],
+        "started_unix": 1794835348.4417872,
+        "allowance_seconds": 90,
+        "pid": 34416,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835348.5076325
+      },
+      {
+        "name": "sd-dev3h-r1-p1-smoke",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/smoke_server.py",
+          "--port",
+          "30010",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p1-smoke.json"
+        ],
+        "started_unix": 1794835348.5092897,
+        "allowance_seconds": 240,
+        "pid": 34417,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835351.0838182
+      },
+      {
+        "name": "sd-dev3h-r1-p1-fixture",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/tier1_precision.py",
+          "fixture"
+        ],
+        "started_unix": 1794835351.085631,
+        "allowance_seconds": 180,
+        "pid": 34429,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835351.3015218
+      },
+      {
+        "name": "sd-dev3h-r1-p1-shared",
+        "command": [
+          "bash",
+          "/data/bench/align/bench_seeded.sh",
+          "sd-dev3h-r1-p1"
+        ],
+        "started_unix": 1794835351.3227725,
+        "allowance_seconds": 1200,
+        "pid": 34493,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835529.5017383
+      },
+      {
+        "name": "sd-dev3h-r1-p1-short",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/bench_serving_dp.py",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "30010",
+          "--concurrencies",
+          "64",
+          "--rounds",
+          "1",
+          "--output-tokens",
+          "1024",
+          "--dp-ranks",
+          "8",
+          "--case-id",
+          "5d3cdbde7db2",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p1-real-short.json"
+        ],
+        "started_unix": 1794835529.519445,
+        "allowance_seconds": 900,
+        "pid": 35219,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835552.359846
+      },
+      {
+        "name": "sd-dev3h-r1-p1-independent",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/bench_serving_dp.py",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "30010",
+          "--two-phase",
+          "--concurrencies",
+          "64",
+          "--rounds",
+          "1",
+          "--prompt-tokens",
+          "131072",
+          "--output-tokens",
+          "1024",
+          "--dp-ranks",
+          "8",
+          "--case-id",
+          "5d3cdbde7db2",
+          "--request-timeout",
+          "3600",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p1-independent128k.json"
+        ],
+        "started_unix": 1794835552.3934164,
+        "allowance_seconds": 1500,
+        "pid": 35314,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794835991.5899856
+      },
+      {
+        "name": "sd-dev3h-r1-p1-mixed",
+        "command": [
+          "bash",
+          "/data/bench/align/mixed_job.sh",
+          "sd-dev3h-r1-p1"
+        ],
+        "started_unix": 1794835991.608204,
+        "allowance_seconds": 1200,
+        "pid": 36292,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794836132.3322792
+      },
+      {
+        "name": "sd-dev3h-r1-p1-ppl",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/ppl_eval.py",
+          "--port",
+          "30010",
+          "--tokenizer",
+          "/data/models/DeepSeek-V4.1-Flash-1017",
+          "--tag",
+          "sd-dev3h-r1-p1",
+          "--segments",
+          "3",
+          "--tokens",
+          "4096",
+          "--corpus",
+          "code=/data/bench/sglang-corpus.txt",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p1-ppl"
+        ],
+        "started_unix": 1794836132.5047894,
+        "allowance_seconds": 600,
+        "pid": 36764,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794836142.861563
+      },
+      {
+        "name": "sd-dev3h-r1-p1-deterministic",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/dev_slim_precision.py",
+          "sd-dev3h-r1-p1"
+        ],
+        "started_unix": 1794836142.941915,
+        "allowance_seconds": 600,
+        "pid": 36969,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794836164.367177
+      },
+      {
+        "name": "sd-dev3h-r1-p1-agent64k",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/agent_bench.py",
+          "sd-dev3h-r1-p1-agent64k",
+          "--url",
+          "http://127.0.0.1:30010",
+          "--model",
+          "DeepSeek-V4.1-Flash-1017",
+          "--tokenizer",
+          "/data/models/DeepSeek-V4.1-Flash-1017",
+          "--repo",
+          "/data/src/xtier",
+          "--lsglang",
+          "/data/src/sglang-xtier",
+          "--sessions",
+          "64k",
+          "--context-limit",
+          "1048576",
+          "--steps",
+          "16",
+          "--temperature",
+          "0",
+          "--out",
+          "/data/bench/align/sd-dev3h-r1-p1-agent64k.json"
+        ],
+        "started_unix": 1794836164.3845305,
+        "allowance_seconds": 600,
+        "pid": 37063,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794836273.339584
+      },
+      {
+        "name": "sd-dev3h-r1-p1-profile-decode-shared",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/sd_profile.py",
+          "decode-shared",
+          "/data/bench/prof-tp8/sd-dev3h-r1-p1-decode-shared",
+          "--concurrency",
+          "64",
+          "--prompt-tokens",
+          "32768",
+          "--output-tokens",
+          "2048",
+          "--steps",
+          "5"
+        ],
+        "started_unix": 1794836273.5145974,
+        "allowance_seconds": 600,
+        "pid": 37220,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794836323.599363
+      },
+      {
+        "name": "sd-dev3h-r1-p1-profile-prefill",
+        "command": [
+          "/data/xtier-env/bin/python",
+          "/data/bench/align/sd_profile.py",
+          "prefill",
+          "/data/bench/prof-tp8/sd-dev3h-r1-p1-prefill",
+          "--concurrency",
+          "1",
+          "--prompt-tokens",
+          "32768",
+          "--output-tokens",
+          "16",
+          "--steps",
+          "5"
+        ],
+        "started_unix": 1794836323.8643975,
+        "allowance_seconds": 600,
+        "pid": 37581,
+        "exit": 0,
+        "status": "completed",
+        "finished_unix": 1794836391.7505622
+      }
+    ],
+    "finished_unix": 1794836402.3976202
+  },
+  "dev_collected": {
+    "p0": {
+      "status": "development_collection_only",
+      "incomplete_stages": [],
+      "stages": [
+        {
+          "name": "capacity",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 0.17
+        },
+        {
+          "name": "resolved",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 0.07
+        },
+        {
+          "name": "smoke",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 2.93
+        },
+        {
+          "name": "fixture",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 0.27
+        },
+        {
+          "name": "shared",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 182.06
+        },
+        {
+          "name": "short",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 22.64
+        },
+        {
+          "name": "independent",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 440.92
+        },
+        {
+          "name": "mixed",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 141.86
+        },
+        {
+          "name": "ppl",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 10.46
+        },
+        {
+          "name": "deterministic",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 21.18
+        },
+        {
+          "name": "agent64k",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 146.28
+        }
+      ],
+      "remaining_budget_seconds": 9592.539047002792,
+      "formal_acceptance": false
+    },
+    "p1": {
+      "status": "development_collection_only",
+      "incomplete_stages": [],
+      "stages": [
+        {
+          "name": "capacity",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 0.17
+        },
+        {
+          "name": "resolved",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 0.07
+        },
+        {
+          "name": "smoke",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 2.57
+        },
+        {
+          "name": "fixture",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 0.22
+        },
+        {
+          "name": "shared",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 178.18
+        },
+        {
+          "name": "short",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 22.84
+        },
+        {
+          "name": "independent",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 439.2
+        },
+        {
+          "name": "mixed",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 140.72
+        },
+        {
+          "name": "ppl",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 10.36
+        },
+        {
+          "name": "deterministic",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 21.43
+        },
+        {
+          "name": "agent64k",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 108.96
+        },
+        {
+          "name": "profile-decode-shared",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 50.08
+        },
+        {
+          "name": "profile-prefill",
+          "status": "completed",
+          "exit": 0,
+          "seconds": 67.89
+        }
+      ],
+      "remaining_budget_seconds": 7986.735886335373,
+      "formal_acceptance": false
+    }
+  },
+  "capacity_and_resolved": {
+    "p0": {
+      "tag": "sd-dev3h-r1-p0",
+      "rank_count_with_capacity": 1,
+      "ranks": {
+        "6": {
+          "graph_free_gib": 9.99
+        },
+        "5": {
+          "graph_free_gib": 9.99
+        },
+        "7": {
+          "graph_free_gib": 10.03
+        },
+        "4": {
+          "graph_free_gib": 9.99
+        },
+        "0": {
+          "graph_free_gib": 10.0,
+          "kv_tokens": 8431360
+        },
+        "3": {
+          "graph_free_gib": 9.99
+        },
+        "1": {
+          "graph_free_gib": 9.99
+        },
+        "2": {
+          "graph_free_gib": 9.99
+        }
+      },
+      "mem_fraction_static": 0.85,
+      "attn_dp_size": 8,
+      "global_kv_tokens": 67450880,
+      "capacity_method": "Sum of all attention DP rank token_capacity values from live /get_server_info; independently agrees with startup log.",
+      "live_memory_states": [
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.997,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 10.029,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        }
+      ],
+      "live_state_count": 8
+    },
+    "p1": {
+      "tag": "sd-dev3h-r1-p1",
+      "rank_count_with_capacity": 1,
+      "ranks": {
+        "7": {
+          "graph_free_gib": 10.03
+        },
+        "6": {
+          "graph_free_gib": 9.99
+        },
+        "5": {
+          "graph_free_gib": 9.99
+        },
+        "4": {
+          "graph_free_gib": 9.99
+        },
+        "2": {
+          "graph_free_gib": 9.99
+        },
+        "1": {
+          "graph_free_gib": 9.99
+        },
+        "3": {
+          "graph_free_gib": 9.99
+        },
+        "0": {
+          "graph_free_gib": 10.0,
+          "kv_tokens": 8431360
+        }
+      },
+      "mem_fraction_static": 0.85,
+      "attn_dp_size": 8,
+      "global_kv_tokens": 67450880,
+      "capacity_method": "Sum of all attention DP rank token_capacity values from live /get_server_info; independently agrees with startup log.",
+      "live_memory_states": [
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.99,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 10.029,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        },
+        {
+          "weight": 56.822,
+          "kvcache": 0,
+          "startup_available": 9.997,
+          "token_capacity": 8431360,
+          "token_capacity_swa": 165376,
+          "token_capacity_window": {
+            "window_128": 165376
+          },
+          "graph": {
+            "prefill": 0.0,
+            "decode": 0.0,
+            "target_verify": 1.045,
+            "draft_prefill": 0.0,
+            "draft_decode": 0.33,
+            "draft_extend": 0.0
+          }
+        }
+      ],
+      "live_state_count": 8
+    },
+    "p0_resolved": {
+      "tp_size": 8,
+      "attn_dp_size": 8,
+      "dp_size": 1,
+      "enable_dp_lm_head": true,
+      "enable_decoder_swa_bounded_replay": true,
+      "chunked_prefill_size": 4096,
+      "max_prefill_tokens": 32768,
+      "max_running_requests": 64,
+      "mem_fraction_static": 0.85,
+      "prefill_decode_interval": 10,
+      "speculative_algorithm": "DSPARK",
+      "speculative_dspark_block_size": 5,
+      "speculative_num_draft_tokens": 6,
+      "moe_runner_backend": "humming",
+      "engram_config": {
+        "placement": "cpu",
+        "replication": "none",
+        "lookup": "auto"
+      },
+      "cuda_graph_config": {
+        "decode": {
+          "backend": "full",
+          "max_bs": 64,
+          "bs": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            22,
+            24,
+            26,
+            28,
+            30,
+            32,
+            40,
+            44,
+            48,
+            52,
+            56,
+            60,
+            64
+          ],
+          "tc_compiler": "eager",
+          "max_context_size": null,
+          "full_prefill_max_req": null,
+          "full_prefill_prefix_chunk_tokens": null,
+          "max_seq_len": null
+        },
+        "prefill": {
+          "backend": "disabled",
+          "max_bs": 32768,
+          "bs": [
+            4,
+            8,
+            12,
+            16,
+            20,
+            24,
+            28,
+            32,
+            48,
+            64,
+            80,
+            96,
+            112,
+            128,
+            144,
+            160,
+            176,
+            192,
+            208,
+            224,
+            240,
+            256,
+            288,
+            320,
+            352,
+            384,
+            416,
+            448,
+            480,
+            512,
+            576,
+            640,
+            704,
+            768,
+            832,
+            896,
+            960,
+            1024,
+            1280,
+            1536,
+            1792,
+            2048,
+            2304,
+            2560,
+            2816,
+            3072,
+            3328,
+            3584,
+            3840,
+            4096,
+            4608,
+            5120,
+            5632,
+            6144,
+            6656,
+            7168,
+            7680,
+            8192,
+            8704,
+            9216,
+            9728,
+            10240,
+            10752,
+            11264,
+            11776,
+            12288,
+            12800,
+            13312,
+            13824,
+            14336,
+            14848,
+            15360,
+            15872,
+            16384,
+            16896,
+            17408,
+            17920,
+            18432,
+            18944,
+            19456,
+            19968,
+            20480,
+            20992,
+            21504,
+            22016,
+            22528,
+            23040,
+            23552,
+            24064,
+            24576,
+            25088,
+            25600,
+            26112,
+            26624,
+            27136,
+            27648,
+            28160,
+            28672,
+            29184,
+            29696,
+            30208,
+            30720,
+            31232,
+            31744,
+            32256,
+            32768
+          ],
+          "tc_compiler": "eager",
+          "max_context_size": null,
+          "full_prefill_max_req": null,
+          "full_prefill_prefix_chunk_tokens": null,
+          "max_seq_len": null
+        }
+      },
+      "context_length": 1048576,
+      "load_balance_method": "round_robin",
+      "schedule_conservativeness": 0.3,
+      "min_free_slots_delay": 1,
+      "kv_cache_dtype": "fp8_e4m3",
+      "enable_deepseek_v4_fp4_indexer": true
+    },
+    "p1_resolved": {
+      "tp_size": 8,
+      "attn_dp_size": 8,
+      "dp_size": 1,
+      "enable_dp_lm_head": true,
+      "enable_decoder_swa_bounded_replay": true,
+      "chunked_prefill_size": 4096,
+      "max_prefill_tokens": 32768,
+      "max_running_requests": 64,
+      "mem_fraction_static": 0.85,
+      "prefill_decode_interval": 10,
+      "speculative_algorithm": "DSPARK",
+      "speculative_dspark_block_size": 5,
+      "speculative_num_draft_tokens": 6,
+      "moe_runner_backend": "humming",
+      "engram_config": {
+        "placement": "cpu",
+        "replication": "none",
+        "lookup": "auto"
+      },
+      "cuda_graph_config": {
+        "decode": {
+          "backend": "full",
+          "max_bs": 64,
+          "bs": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            22,
+            24,
+            26,
+            28,
+            30,
+            32,
+            40,
+            44,
+            48,
+            52,
+            56,
+            60,
+            64
+          ],
+          "tc_compiler": "eager",
+          "max_context_size": null,
+          "full_prefill_max_req": null,
+          "full_prefill_prefix_chunk_tokens": null,
+          "max_seq_len": null
+        },
+        "prefill": {
+          "backend": "disabled",
+          "max_bs": 32768,
+          "bs": [
+            4,
+            8,
+            12,
+            16,
+            20,
+            24,
+            28,
+            32,
+            48,
+            64,
+            80,
+            96,
+            112,
+            128,
+            144,
+            160,
+            176,
+            192,
+            208,
+            224,
+            240,
+            256,
+            288,
+            320,
+            352,
+            384,
+            416,
+            448,
+            480,
+            512,
+            576,
+            640,
+            704,
+            768,
+            832,
+            896,
+            960,
+            1024,
+            1280,
+            1536,
+            1792,
+            2048,
+            2304,
+            2560,
+            2816,
+            3072,
+            3328,
+            3584,
+            3840,
+            4096,
+            4608,
+            5120,
+            5632,
+            6144,
+            6656,
+            7168,
+            7680,
+            8192,
+            8704,
+            9216,
+            9728,
+            10240,
+            10752,
+            11264,
+            11776,
+            12288,
+            12800,
+            13312,
+            13824,
+            14336,
+            14848,
+            15360,
+            15872,
+            16384,
+            16896,
+            17408,
+            17920,
+            18432,
+            18944,
+            19456,
+            19968,
+            20480,
+            20992,
+            21504,
+            22016,
+            22528,
+            23040,
+            23552,
+            24064,
+            24576,
+            25088,
+            25600,
+            26112,
+            26624,
+            27136,
+            27648,
+            28160,
+            28672,
+            29184,
+            29696,
+            30208,
+            30720,
+            31232,
+            31744,
+            32256,
+            32768
+          ],
+          "tc_compiler": "eager",
+          "max_context_size": null,
+          "full_prefill_max_req": null,
+          "full_prefill_prefix_chunk_tokens": null,
+          "max_seq_len": null
+        }
+      },
+      "context_length": 1048576,
+      "load_balance_method": "round_robin",
+      "schedule_conservativeness": 0.3,
+      "min_free_slots_delay": 1,
+      "kv_cache_dtype": "fp8_e4m3",
+      "enable_deepseek_v4_fp4_indexer": true
+    }
+  },
+  "stability_and_power": {
+    "p0": {
+      "guard_status": "finished",
+      "load_seconds": 237.06,
+      "min_free_mib": 4872.0,
+      "min_free_gib": 4.7578125,
+      "passes_f10_1p26gib": true,
+      "kernel_or_cuda_errors": [],
+      "power_w": {
+        "samples": 4832,
+        "min": 28.92,
+        "p50": 200.76,
+        "p95": 297.47,
+        "max": 314.08
+      },
+      "sm_clock_mhz": {
+        "samples": 4832,
+        "min": 172.0,
+        "p50": 2385.0,
+        "p95": 2422.0,
+        "max": 2430.0
+      },
+      "mem_clock_mhz": {
+        "samples": 4832,
+        "min": 405.0,
+        "p50": 12481.0,
+        "p95": 12481.0,
+        "max": 12481.0
+      },
+      "temp_c": {
+        "samples": 4832,
+        "min": 30.0,
+        "p50": 44.0,
+        "p95": 49.0,
+        "max": 54.0
+      }
+    },
+    "p1": {
+      "guard_status": "finished",
+      "load_seconds": 547.06,
+      "min_free_mib": 4858.0,
+      "min_free_gib": 4.744140625,
+      "passes_f10_1p26gib": true,
+      "kernel_or_cuda_errors": [],
+      "power_w": {
+        "samples": 6368,
+        "min": 29.41,
+        "p50": 174.06,
+        "p95": 301.97,
+        "max": 325.23
+      },
+      "sm_clock_mhz": {
+        "samples": 6368,
+        "min": 172.0,
+        "p50": 2415.0,
+        "p95": 2422.0,
+        "max": 2430.0
+      },
+      "mem_clock_mhz": {
+        "samples": 6368,
+        "min": 405.0,
+        "p50": 12481.0,
+        "p95": 12481.0,
+        "max": 12481.0
+      },
+      "temp_c": {
+        "samples": 6368,
+        "min": 31.0,
+        "p50": 45.0,
+        "p95": 53.0,
+        "max": 58.0
+      }
+    }
+  },
+  "smoke": {
+    "p0": {
+      "chinese": {
+        "ok": true,
+        "answer": "NVMe（非易失性内存主机控制器接口规范）是一种专为固态硬盘（SSD）设计的高性能、低延迟存储访问协议，通过PCIe总线直接与CPU通信，大幅提升数据传输速度。",
+        "usage": {
+          "prompt_tokens": 13,
+          "total_tokens": 60,
+          "completion_tokens": 47,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "code": {
+        "ok": true,
+        "answer": "# Python `add` Function\n\n```python\ndef add(a: int, b: int) -> int:\n    \"\"\"Return the sum of two integers.\"\"\"\n    return a + b\n```\n\n## Example Usage\n\n```python\nprint(add(3, 5))      # 8\nprint(add(-2, 7))     # 5\nprint(add(0, 0))      # 0\n```\n\n## Notes\n\n- The function accepts two parameters, `a` and `b`, and returns their sum.\n- Type hints (`int`) are included for clarity but are not enforced at runtime.\n- If you want to strictly enforce integer inputs, you could add validation:\n\n```python\ndef add",
+        "usage": {
+          "prompt_tokens": 16,
+          "total_tokens": 262,
+          "completion_tokens": 246,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "stream_tool": {
+        "ok": true,
+        "calls": [
+          {
+            "name": "get_weather",
+            "arguments": "{\"city\": \"Beijing\"}"
+          }
+        ],
+        "parsed_arguments": [
+          {
+            "city": "Beijing"
+          }
+        ],
+        "chunks": 12
+      },
+      "all_ok": true
+    },
+    "p1": {
+      "chinese": {
+        "ok": true,
+        "answer": "NVMe（非易失性内存主机控制器接口规范）是一种专为固态硬盘（SSD）设计的高性能、低延迟存储访问协议，通过PCIe总线直接与CPU通信，大幅提升数据传输速度。",
+        "usage": {
+          "prompt_tokens": 13,
+          "total_tokens": 60,
+          "completion_tokens": 47,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "code": {
+        "ok": true,
+        "answer": "# Python `add` Function\n\n```python\ndef add(a: int, b: int) -> int:\n    \"\"\"Add two integers and return the result.\"\"\"\n    return a + b\n```\n\n## Example Usage\n\n```python\nprint(add(3, 5))      # 8\nprint(add(-2, 7))     # 5\nprint(add(0, 0))      # 0\n```\n\n## Notes\n\n- The function accepts two parameters `a` and `b`.\n- Type hints (`int`) are included for clarity but are not enforced at runtime.\n- It returns the sum using the `+` operator.\n- If you want to strictly enforce integer inputs, you could add v",
+        "usage": {
+          "prompt_tokens": 16,
+          "total_tokens": 222,
+          "completion_tokens": 206,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "reasoning_tokens": 0,
+          "completion_tokens_details": null
+        }
+      },
+      "stream_tool": {
+        "ok": true,
+        "calls": [
+          {
+            "name": "get_weather",
+            "arguments": "{\"city\": \"Beijing\"}"
+          }
+        ],
+        "parsed_arguments": [
+          {
+            "city": "Beijing"
+          }
+        ],
+        "chunks": 12
+      },
+      "all_ok": true
+    }
+  },
+  "shared_32k1k": {
+    "1": {
+      "p0": {
+        "concurrency": 1,
+        "round": 0,
+        "requests": 1,
+        "success": 1,
+        "errors": [],
+        "prefill_success": 1,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 32790,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 2131.37,
+        "p50_cold_ttft_s": 15.384,
+        "p95_cold_ttft_s": 15.384,
+        "input_tokens": 32793,
+        "output_tokens": 1024,
+        "decode_cached_tokens": 32512,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 173.79,
+        "decode_window_tps": 181.2,
+        "verify_steps": 285,
+        "accept_tokens_per_step_est": 3.593,
+        "mean_request_ms_per_step_est": 19.829,
+        "sum_request_decode_tps_est": 181.02,
+        "p50_ttft_s": 0.241,
+        "p95_ttft_s": 0.241,
+        "p50_tpot_ms": 5.524,
+        "p95_tpot_ms": 5.524
+      },
+      "p1": {
+        "concurrency": 1,
+        "round": 0,
+        "requests": 1,
+        "success": 1,
+        "errors": [],
+        "prefill_success": 1,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 32790,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 2314.6,
+        "p50_cold_ttft_s": 14.167,
+        "p95_cold_ttft_s": 14.167,
+        "input_tokens": 32793,
+        "output_tokens": 1024,
+        "decode_cached_tokens": 32512,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 261.62,
+        "decode_window_tps": 275.2,
+        "verify_steps": 188,
+        "accept_tokens_per_step_est": 5.447,
+        "mean_request_ms_per_step_est": 19.792,
+        "sum_request_decode_tps_est": 274.93,
+        "p50_ttft_s": 0.193,
+        "p95_ttft_s": 0.193,
+        "p50_tpot_ms": 3.637,
+        "p95_tpot_ms": 3.637
+      },
+      "prefill_tps": {
+        "p0": 2131.37,
+        "p1": 2314.6,
+        "relative_change_pct": 8.59681800907397,
+        "regression_pct": -8.59681800907397
+      },
+      "decode_tps": {
+        "p0": 181.2,
+        "p1": 275.2,
+        "relative_change_pct": 51.87637969094923,
+        "regression_pct": -51.87637969094923
+      },
+      "ms_per_step": {
+        "p0": 19.829,
+        "p1": 19.792,
+        "relative_change_pct": -0.186595390589539,
+        "regression_pct": -0.186595390589539
+      },
+      "accept_len": {
+        "p0": 3.593,
+        "p1": 5.447
+      },
+      "p95_tpot_ms": {
+        "p0": 5.524,
+        "p1": 3.637,
+        "relative_change_pct": -34.16002896451846,
+        "regression_pct": -34.16002896451846
+      }
+    },
+    "64": {
+      "p0": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 2098560,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 20494.18,
+        "p50_cold_ttft_s": 58.555,
+        "p95_cold_ttft_s": 102.273,
+        "input_tokens": 2098752,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 2080768,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 4294.19,
+        "decode_window_tps": 4359.43,
+        "verify_steps": 11970,
+        "accept_tokens_per_step_est": 5.475,
+        "mean_request_ms_per_step_est": 55.575,
+        "sum_request_decode_tps_est": 6337.46,
+        "p50_ttft_s": 1.459,
+        "p95_ttft_s": 1.534,
+        "p50_tpot_ms": 9.905,
+        "p95_tpot_ms": 12.924
+      },
+      "p1": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 2098560,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 20543.34,
+        "p50_cold_ttft_s": 58.65,
+        "p95_cold_ttft_s": 102.009,
+        "input_tokens": 2098752,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 2080768,
+        "decode_cached_pct": 99.14,
+        "successful_output_tps": 4152.55,
+        "decode_window_tps": 4214.45,
+        "verify_steps": 12404,
+        "accept_tokens_per_step_est": 5.283,
+        "mean_request_ms_per_step_est": 55.917,
+        "sum_request_decode_tps_est": 6112.02,
+        "p50_ttft_s": 1.455,
+        "p95_ttft_s": 1.523,
+        "p50_tpot_ms": 10.119,
+        "p95_tpot_ms": 13.866
+      },
+      "prefill_tps": {
+        "p0": 20494.18,
+        "p1": 20543.34,
+        "relative_change_pct": 0.23987297857244183,
+        "regression_pct": -0.23987297857244183
+      },
+      "decode_tps": {
+        "p0": 4359.43,
+        "p1": 4214.45,
+        "relative_change_pct": -3.325664134990136,
+        "regression_pct": 3.325664134990136
+      },
+      "ms_per_step": {
+        "p0": 55.575,
+        "p1": 55.917,
+        "relative_change_pct": 0.6153846153846176,
+        "regression_pct": 0.6153846153846176
+      },
+      "accept_len": {
+        "p0": 5.475,
+        "p1": 5.283
+      },
+      "p95_tpot_ms": {
+        "p0": 12.924,
+        "p1": 13.866,
+        "relative_change_pct": 7.2887650882079935,
+        "regression_pct": 7.2887650882079935
+      }
+    }
+  },
+  "real_short_64": {
+    "p0": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "input_tokens": 2400,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 0,
+      "decode_cached_pct": 0.0,
+      "successful_output_tps": 2931.81,
+      "decode_window_tps": 2958.32,
+      "verify_steps": 19739,
+      "accept_tokens_per_step_est": 3.32,
+      "mean_request_ms_per_step_est": 54.471,
+      "sum_request_decode_tps_est": 4102.54,
+      "p50_ttft_s": 0.597,
+      "p95_ttft_s": 0.64,
+      "p50_tpot_ms": 16.766,
+      "p95_tpot_ms": 21.012,
+      "prefill_window_tps_est": 3650.9
+    },
+    "p1": {
+      "concurrency": 64,
+      "round": 0,
+      "requests": 64,
+      "success": 64,
+      "errors": [],
+      "input_tokens": 2400,
+      "output_tokens": 65536,
+      "decode_cached_tokens": 0,
+      "decode_cached_pct": 0.0,
+      "successful_output_tps": 2899.55,
+      "decode_window_tps": 2922.21,
+      "verify_steps": 19960,
+      "accept_tokens_per_step_est": 3.283,
+      "mean_request_ms_per_step_est": 54.068,
+      "sum_request_decode_tps_est": 4099.08,
+      "p50_ttft_s": 0.569,
+      "p95_ttft_s": 0.607,
+      "p50_tpot_ms": 16.698,
+      "p95_tpot_ms": 21.254,
+      "prefill_window_tps_est": 3750.91
+    },
+    "decode_tps": {
+      "p0": 2958.32,
+      "p1": 2922.21,
+      "relative_change_pct": -1.2206252197193068,
+      "regression_pct": 1.2206252197193068
+    },
+    "ms_per_step": {
+      "p0": 54.471,
+      "p1": 54.068,
+      "relative_change_pct": -0.7398432193277182,
+      "regression_pct": -0.7398432193277182
+    },
+    "accept_len": {
+      "p0": 3.32,
+      "p1": 3.283
+    },
+    "p95_tpot_ms": {
+      "p0": 21.012,
+      "p1": 21.254,
+      "relative_change_pct": 1.1517228250523592,
+      "regression_pct": 1.1517228250523592
+    }
+  },
+  "independent_64x128k": {
+    "p0": {
+      "summary": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 8390016,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 20623.23,
+        "p50_cold_ttft_s": 229.667,
+        "p95_cold_ttft_s": 406.43,
+        "input_tokens": 8390016,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 8372224,
+        "decode_cached_pct": 99.79,
+        "successful_output_tps": 3260.95,
+        "decode_window_tps": 3383.68,
+        "verify_steps": 19310,
+        "accept_tokens_per_step_est": 3.394,
+        "mean_request_ms_per_step_est": 55.825,
+        "sum_request_decode_tps_est": 3895.54,
+        "p50_ttft_s": 1.227,
+        "p95_ttft_s": 2.138,
+        "p50_tpot_ms": 16.436,
+        "p95_tpot_ms": 17.803
+      },
+      "cache_histogram": {
+        "130816": 64
+      },
+      "maximum_concurrent_streaming": 64,
+      "common_decode_window_seconds": 14.721150508999926,
+      "has_all64_common_window": true,
+      "prefill_all_ok": true,
+      "decode_all_ok": true
+    },
+    "p1": {
+      "summary": {
+        "concurrency": 64,
+        "round": 0,
+        "requests": 64,
+        "success": 64,
+        "errors": [],
+        "prefill_success": 64,
+        "prefill_errors": [],
+        "cold_prefill_input_tokens": 8390016,
+        "cold_prefill_cached_tokens": 0,
+        "prefill_window_tps_est": 20660.22,
+        "p50_cold_ttft_s": 228.907,
+        "p95_cold_ttft_s": 405.557,
+        "input_tokens": 8390016,
+        "output_tokens": 65536,
+        "decode_cached_tokens": 8372224,
+        "decode_cached_pct": 99.79,
+        "successful_output_tps": 3454.24,
+        "decode_window_tps": 3567.43,
+        "verify_steps": 19413,
+        "accept_tokens_per_step_est": 3.376,
+        "mean_request_ms_per_step_est": 53.593,
+        "sum_request_decode_tps_est": 4032.15,
+        "p50_ttft_s": 1.395,
+        "p95_ttft_s": 1.904,
+        "p50_tpot_ms": 15.979,
+        "p95_tpot_ms": 16.705
+      },
+      "cache_histogram": {
+        "130816": 64
+      },
+      "maximum_concurrent_streaming": 64,
+      "common_decode_window_seconds": 14.410579024000981,
+      "has_all64_common_window": true,
+      "prefill_all_ok": true,
+      "decode_all_ok": true
+    },
+    "cold_p95_ttft_s": {
+      "p0": 406.43,
+      "p1": 405.557,
+      "relative_change_pct": -0.21479713603818062,
+      "regression_pct": -0.21479713603818062
+    },
+    "cold_prefill_tps": {
+      "p0": 20623.23,
+      "p1": 20660.22,
+      "relative_change_pct": 0.17936084696723587,
+      "regression_pct": -0.17936084696723587
+    },
+    "decode_window_tps": {
+      "p0": 3383.68,
+      "p1": 3567.43,
+      "relative_change_pct": 5.430478059390964,
+      "regression_pct": -5.430478059390964
+    },
+    "ms_per_step": {
+      "p0": 55.825,
+      "p1": 53.593,
+      "relative_change_pct": -3.998208687863858,
+      "regression_pct": -3.998208687863858
+    }
+  },
+  "mixed_64_plus_2x300k": {
+    "p0": {
+      "error": null,
+      "decode_clients": 64,
+      "long_requests": 2,
+      "long_ttft_s": [
+        105.93729232200167,
+        106.7301466709996
+      ],
+      "worker_errors": [],
+      "window_s": 107.3452526279998,
+      "decode_output_tokens_during_window": 252246,
+      "decode_clients_streaming_at_insert": 64,
+      "decode_aggregate_tps": 2349.8570623718897,
+      "decode_per_client_tps": 36.71651659956078,
+      "overlapping_request_tpot_p50_ms": 25.980156865101577,
+      "overlapping_request_tpot_p95_ms": 28.60115009579731,
+      "stream_tpot_p50_ms": 12.750032666493402,
+      "stream_tpot_p95_ms": 109.01753483358334,
+      "stream_gap_p95_ms": 512.5049760008551,
+      "stream_gap_max_ms": 713.1695349999063
+    },
+    "p1": {
+      "error": null,
+      "decode_clients": 64,
+      "long_requests": 2,
+      "long_ttft_s": [
+        104.80131986800006,
+        105.59995942299975
+      ],
+      "worker_errors": [],
+      "window_s": 106.49836406500071,
+      "decode_output_tokens_during_window": 247942,
+      "decode_clients_streaming_at_insert": 64,
+      "decode_aggregate_tps": 2328.1296588618948,
+      "decode_per_client_tps": 36.377025919717106,
+      "overlapping_request_tpot_p50_ms": 24.414607153469724,
+      "overlapping_request_tpot_p95_ms": 29.28391112805611,
+      "stream_tpot_p50_ms": 12.806920249659015,
+      "stream_tpot_p95_ms": 110.12349266669237,
+      "stream_gap_p95_ms": 510.59568600066996,
+      "stream_gap_max_ms": 718.6485050006013
+    },
+    "max_long_ttft_s": {
+      "p0": 106.7301466709996,
+      "p1": 105.59995942299975,
+      "relative_change_pct": -1.058920354980597,
+      "regression_pct": -1.058920354980597
+    },
+    "decode_aggregate_tps": {
+      "p0": 2349.8570623718897,
+      "p1": 2328.1296588618948,
+      "relative_change_pct": -0.924626602099099,
+      "regression_pct": 0.924626602099099
+    }
+  },
+  "ppl_3seg": {
+    "p0": {
+      "segments": 3,
+      "tokens": 12285,
+      "keys": [
+        [
+          "code",
+          0,
+          4095
+        ],
+        [
+          "code",
+          1,
+          4095
+        ],
+        [
+          "code",
+          2,
+          4095
+        ]
+      ],
+      "ppl_exact": 2.0678115364834206,
+      "rows": [
+        {
+          "corpus": "code",
+          "seg": 0,
+          "n": 4095,
+          "nll": 0.5808467249093614
+        },
+        {
+          "corpus": "code",
+          "seg": 1,
+          "n": 4095,
+          "nll": 0.5552610685827508
+        },
+        {
+          "corpus": "code",
+          "seg": 2,
+          "n": 4095,
+          "nll": 1.043364664302221
+        }
+      ]
+    },
+    "p1": {
+      "segments": 3,
+      "tokens": 12285,
+      "keys": [
+        [
+          "code",
+          0,
+          4095
+        ],
+        [
+          "code",
+          1,
+          4095
+        ],
+        [
+          "code",
+          2,
+          4095
+        ]
+      ],
+      "ppl_exact": 2.069190581530605,
+      "rows": [
+        {
+          "corpus": "code",
+          "seg": 0,
+          "n": 4095,
+          "nll": 0.5824972981906166
+        },
+        {
+          "corpus": "code",
+          "seg": 1,
+          "n": 4095,
+          "nll": 0.5532112166443589
+        },
+        {
+          "corpus": "code",
+          "seg": 2,
+          "n": 4095,
+          "nll": 1.0457640073425858
+        }
+      ]
+    },
+    "relative_change_pct": 0.06669104136682868,
+    "within_0p5pct": true
+  },
+  "deterministic_10": {
+    "identical": 2,
+    "total": 10,
+    "cases": [
+      {
+        "id": 0,
+        "same": false,
+        "first_different_token_zero_based": 37,
+        "p0_tokens": 512,
+        "p1_tokens": 512,
+        "p0_sha256": "89734c5fa7b098c9b5bafbfb108c41a5f1937fbebb856364e6c16fa3afe443cd",
+        "p1_sha256": "4f29a5b2dcf8224ff1024eff82fd6e405016535f05ba3e082eda5e070becedb6"
+      },
+      {
+        "id": 1,
+        "same": false,
+        "first_different_token_zero_based": 22,
+        "p0_tokens": 512,
+        "p1_tokens": 512,
+        "p0_sha256": "77ddd87d8b238b73a9c07d89ebbd2a96903c922feff23565af3f32b9c37863e0",
+        "p1_sha256": "31a5711150c29257d85f08dedf52ba91796a8463ae2cd7a52227532e78a96edf"
+      },
+      {
+        "id": 2,
+        "same": true,
+        "first_different_token_zero_based": null,
+        "p0_tokens": 71,
+        "p1_tokens": 71,
+        "p0_sha256": "c7444827487b05c61001fba68df2d65b0deec334b7f483d271298d96f12afea9",
+        "p1_sha256": "c7444827487b05c61001fba68df2d65b0deec334b7f483d271298d96f12afea9"
+      },
+      {
+        "id": 3,
+        "same": false,
+        "first_different_token_zero_based": 29,
+        "p0_tokens": 171,
+        "p1_tokens": 137,
+        "p0_sha256": "eeec14db700e718439cfbec662652557eb76360c4820fd7c54d740e563bc9499",
+        "p1_sha256": "307baefee9d8eba2be83839e5258cbc7d1c96f509229ccdfc9a6660911382936"
+      },
+      {
+        "id": 4,
+        "same": false,
+        "first_different_token_zero_based": 26,
+        "p0_tokens": 512,
+        "p1_tokens": 512,
+        "p0_sha256": "fdf4438bdc11f90cfd3a7c85148831fb9c69a4028d822555fcb28f559c2e6fb9",
+        "p1_sha256": "148a0809e44c2bafe12955385e393f2a936c9a3a1da2511ca17a32150526d091"
+      },
+      {
+        "id": 5,
+        "same": false,
+        "first_different_token_zero_based": 21,
+        "p0_tokens": 192,
+        "p1_tokens": 234,
+        "p0_sha256": "c32d1f715cbbc857ac863da10a9e13419abf6c815c95d986b37a3671409fcd40",
+        "p1_sha256": "5c91752c4a3e0a77d18c5b6dddfae0db7a08cf0f0d7d8df2392d5ec530a7141e"
+      },
+      {
+        "id": 6,
+        "same": false,
+        "first_different_token_zero_based": 68,
+        "p0_tokens": 197,
+        "p1_tokens": 235,
+        "p0_sha256": "e496d62522ce99aabac1a23037e2c10c05f35438597f74c5bf8902e98a7e6371",
+        "p1_sha256": "50a5ee1decad0d9191fe5e502e252ede2698f6b1b7424ace82ad770c22d69972"
+      },
+      {
+        "id": 7,
+        "same": false,
+        "first_different_token_zero_based": 31,
+        "p0_tokens": 133,
+        "p1_tokens": 130,
+        "p0_sha256": "f9de69d2c15fc2cefa20cdfdaa4b5b08f78c8e2f67ec0695f5a635a62d47b0ab",
+        "p1_sha256": "6722983dee1f4c6b3f436fcdc0d8681e986faa3f4a50e933bf2ef2e804009669"
+      },
+      {
+        "id": 8,
+        "same": true,
+        "first_different_token_zero_based": null,
+        "p0_tokens": 79,
+        "p1_tokens": 79,
+        "p0_sha256": "b576a6d3d9302dd6b1f3be79c38a2aacf497ee551e131f4f2ec659ac9c007ba1",
+        "p1_sha256": "b576a6d3d9302dd6b1f3be79c38a2aacf497ee551e131f4f2ec659ac9c007ba1"
+      },
+      {
+        "id": 9,
+        "same": false,
+        "first_different_token_zero_based": 65,
+        "p0_tokens": 512,
+        "p1_tokens": 512,
+        "p0_sha256": "92a6618319334d48ec44855d2de941302c25f440e5232772d7cdc985ffe633c3",
+        "p1_sha256": "8f24600c9a530c6f15281d73e6e7fcfee8fb9e91f5ade2de28c71811a37b353e"
+      }
+    ]
+  },
+  "agent_64k": {
+    "p0": {
+      "requests": 16,
+      "tools": 16,
+      "protocol_rate": 1.0,
+      "execution_rate": 0.875,
+      "session_64k": {
+        "end_reason": "step_limit",
+        "normal_end": false,
+        "effective_writes": 0,
+        "has_effective_write": false,
+        "modified_files": {},
+        "last_check_python": {},
+        "modified_python_files_checked": {},
+        "final_check_python": false,
+        "completed": false,
+        "definition": "Changed sandbox bytes, checked all final modified Python files, and normal stream stop; not semantic correctness."
+      },
+      "median_ms_per_step": null
+    },
+    "p1": {
+      "requests": 16,
+      "tools": 16,
+      "protocol_rate": 1.0,
+      "execution_rate": 0.875,
+      "session_64k": {
+        "end_reason": "step_limit",
+        "normal_end": false,
+        "effective_writes": 0,
+        "has_effective_write": false,
+        "modified_files": {},
+        "last_check_python": {},
+        "modified_python_files_checked": {},
+        "final_check_python": false,
+        "completed": false,
+        "definition": "Changed sandbox bytes, checked all final modified Python files, and normal stream stop; not semantic correctness."
+      },
+      "median_ms_per_step": null
+    }
+  },
+  "p1_profiles": {
+    "decode-shared": {
+      "ranks_analyzed": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "matched_target_forwards": 40,
+      "local_bs_observed": [
+        8
+      ],
+      "chunk_tokens_observed": null,
+      "median_gpu_elapsed_us_per_forward": 48387.8330078125,
+      "median_gpu_busy_union_us_per_forward": 47767.7705078125,
+      "draft_forward_median_busy_us": 2732.294677734375,
+      "draft_share_of_step_busy_pct": 5.410477526504972,
+      "per_rank_median_busy_union_us": {
+        "0": 47744.583984375,
+        "1": 47800.697265625,
+        "2": 47761.529296875,
+        "3": 47764.14453125,
+        "4": 47732.5478515625,
+        "5": 47772.18408203125,
+        "6": 47757.6845703125,
+        "7": 47764.97412109375
+      },
+      "rank_busy_max_over_min_ratio": 1.001427734682725,
+      "per_rank_forward_graph_present_fraction": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 1.0,
+        "7": 1.0
+      },
+      "median_category_union_us_per_forward": {
+        "NCCL": 14460.8056640625,
+        "MoE": 17345.698486328125,
+        "attention": 3405.8447265625,
+        "indexer": 878.97314453125,
+        "GEMM": 9562.257568359375,
+        "hc_mhc": 1696.27294921875,
+        "memcpy_memset": 12.896240234375,
+        "other": 4362.416748046875
+      },
+      "rank0_forward_graph_present_fraction": 1.0,
+      "rank0_inter_batch_gpu_gap_us": {
+        "n": 4,
+        "p50": 0.0,
+        "p95": 0,
+        "max": 0
+      },
+      "rank0_top15_kernels": [
+        {
+          "name": "void humming<MmaOpClass, Shape<0u, 768u, 5120u>, Shape<8u, 128u, 64u>, Shape<8u, 64u, 32u>, Shape<0u, 192u, 0u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<4u, 2u, 1u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<8u, 8u, 0u>, LayerConfig, ComputeConfig, TuningConfig>(KernelTensorParamType<TuningConfig::kUseTmaA>::Type, KernelTensorParamType<TuningConfig::kUseTmaB>::Type, KernelTensorParamType<TuningConfig::kUseTmaC>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS2>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS>::Type, KernelTensorParamType<TuningConfig::kUseTmaBZP>::Type, KernelTensorParamType<TuningConfig::kUseTmaBias>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS2>::Type, unsigned int const*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st*, int*, unsigned int, unsigned int, bool)",
+          "calls": 200,
+          "sum_us": 53800.116,
+          "category": "MoE"
+        },
+        {
+          "name": "ncclDevKernel_ReduceScatter_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+          "calls": 215,
+          "sum_us": 33923.768,
+          "category": "NCCL"
+        },
+        {
+          "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+          "calls": 230,
+          "sum_us": 32957.934,
+          "category": "NCCL"
+        },
+        {
+          "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<8u, 128u, 64u>, Shape<8u, 64u, 32u>, Shape<0u, 0u, 96u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<4u, 2u, 1u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<8u, 8u, 0u>, LayerConfig, ComputeConfig, TuningConfig>(KernelTensorParamType<TuningConfig::kUseTmaA>::Type, KernelTensorParamType<TuningConfig::kUseTmaB>::Type, KernelTensorParamType<TuningConfig::kUseTmaC>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS2>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS>::Type, KernelTensorParamType<TuningConfig::kUseTmaBZP>::Type, KernelTensorParamType<TuningConfig::kUseTmaBias>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS2>::Type, unsigned int const*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st*, int*, unsigned int, unsigned int, bool)",
+          "calls": 200,
+          "sum_us": 30094.555,
+          "category": "MoE"
+        },
+        {
+          "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1409601_TVLayoutDst1409601_Valuetypef8E4M3FN_tensor00o11_0",
+          "calls": 685,
+          "sum_us": 22592.467,
+          "category": "GEMM"
+        },
+        {
+          "name": "void flashinfer::sparse_mla_sm120::repair_a2::sparse_mla_decode_dsv41_bf16_fp32mid_kernel<64, true, (ModelType)6>(__nv_bfloat16 const*, unsigned char const*, int const*, float*, float*, int const*, unsigned char const*, int const*, int const*, int, int, unsigned long, int, int, int, int, int, float, unsigned long, unsigned long, unsigned long, int)",
+          "calls": 190,
+          "sum_us": 15046.488,
+          "category": "attention"
+        },
+        {
+          "name": "_dequant_kernel",
+          "calls": 200,
+          "sum_us": 11200.786,
+          "category": "other"
+        },
+        {
+          "name": "ncclDevKernel_SendRecv(ncclDevKernelArgsStorage<4096ul>)",
+          "calls": 10,
+          "sum_us": 9291.728,
+          "category": "NCCL"
+        },
+        {
+          "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_TVLayoutDst1819201_Valuetypef8E4M3FN_tensor00o11_0",
+          "calls": 250,
+          "sum_us": 7840.847,
+          "category": "GEMM"
+        },
+        {
+          "name": "_ZN7cutlass13device_kernelIN10flashinfer4gemm55DeviceGemmMxfp8GemmSm120___nv_bfloat16_128_128_128false9Sm12xOnlyINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiiEEENS5_10collective13CollectiveMmaINS5_42MainloopSm120TmaWarpSpecializedBlockScaledILi2ELi3ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_51KernelTmaWarpSpecializedCooperativeBlockScaledSm120ILi3EEEEENS9_IJNSE_ILi128EEESK_SK_EEENS9_IJNS_12float_e4m3_tENS_13float_ue8m0_tEEEENS9_IJNS9_IJlSF_lEEENS8_6LayoutINS9_IJNS9_IJNS9_IJNSE_ILi32EEENSE_ILi4EEEEEEiEEESU_NS9_IJSF_iEEEEEENS9_IJNS9_IJNS9_IJNSE_ILi16EEESS_EEEiEEENS9_IJNS9_IJNSE_ILi0EEESF_EEENSE_ILi512EEEEEENS9_IJS10_iEEEEEEEEEEESO_S17_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_5SM12011BLOCKSCALED19SM120_16x8x32_TN_VSISM_SM_fSN_Li32EEEEEENSQ_INS9_IJSS_NSE_ILi2EEESF_EEENS9_IJSF_SS_S10_EEEEENS9_IJSK_NSQ_INS9_IJNSE_ILi8EEES1F_S1F_EEENS9_IJSF_SX_S1J_EEEEESR_EEEEENS9_IJNS8_13SM90_TMA_LOADES1P_EEENS9_IJNS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENSQ_INS9_IJS1J_SK_EEENS9_IJSK_SF_EEEEEEENSQ_INS9_IJNS9_IJST_SF_EEENS9_IJNS9_IJSR_SF_EEESS_SF_EEEEEENS9_IJNS9_IJSY_S12_EEENS9_IJS11_SF_S12_EEEEEEEEEEENS9_IJNS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS29_IJNS8_13UniversalCopyISN_SN_EESN_EEEEEENS8_8identityES1Q_S28_S2F_S2G_EENS_8epilogue10collective18CollectiveEpilogueINS2I_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSL_NS9_IJNSE_ILi64EEESR_EEEvSP_NS_10bfloat16_tESP_NS2I_6fusion15FusionCallbacksINS2I_23Sm120TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEENS2Q_17LinearCombinationIS2P_fvfLNS_15FloatRoundStyleE2EEESL_S2O_JEEES1P_NS1R_INS1S_ILi2ELi4ELi3EEENS1U_ILi16EEENSQ_INS9_IJS1J_SR_EEES21_EEEENS8_17SM75_U32x2_LDSM_NENS8_14SM90_TMA_STOREES32_NS8_17SM90_U32x2_STSM_NENS29_IJS35_NS_6half_tEEEEvEEENS5_19PersistentSchedulerEvEEEEEEvNT_6ParamsE",
+          "calls": 215,
+          "sum_us": 7070.128,
+          "category": "GEMM"
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_64x64_64x6_tn_align8::Params)",
+          "calls": 215,
+          "sum_us": 6448.725,
+          "category": "GEMM"
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x64_64x3_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_128x64_64x3_tn_align8::Params)",
+          "calls": 5,
+          "sum_us": 5386.0199999999995,
+          "category": "GEMM"
+        },
+        {
+          "name": "_hc_mix_stats_partial_kernel",
+          "calls": 430,
+          "sum_us": 4589.3060000000005,
+          "category": "hc_mhc"
+        },
+        {
+          "name": "_fp4_index_logits_paged_balanced_kernel",
+          "calls": 25,
+          "sum_us": 3932.937,
+          "category": "indexer"
+        },
+        {
+          "name": "_ZN7cutlass13device_kernelIN2at4cuda6detail34enable_3x_kernel_for_sm10_or_laterINS_4gemm6kernel13GemmUniversalIN4cute5tupleIJiiiEEENS5_10collective13CollectiveMmaINS5_31MainloopSm120TmaWarpSpecializedILi2ELi2ENS9_IJNS8_1CILi1EEESF_SF_EEENS5_40KernelTmaWarpSpecializedCooperativeSm120ILi2EEEEENS9_IJNSE_ILi128EEESK_SK_EEENS_12float_e4m3_tENS9_IJlSF_lEEESM_SN_NS8_8TiledMMAINS8_8MMA_AtomIJNS8_16SM120_16x8x32_TNISM_SM_fEEEEENS8_6LayoutINS9_IJNSE_ILi4EEENSE_ILi2EEESF_EEENS9_IJSF_SU_NSE_ILi0EEEEEEEENS9_IJSK_NSE_ILi32EEES10_EEEEENS8_13SM90_TMA_LOADENS8_14ComposedLayoutINS8_7SwizzleILi3ELi4ELi3EEENS8_18smem_ptr_flag_bitsILi8EEENST_INS9_IJNSE_ILi8EEESK_EEENS9_IJSK_SF_EEEEEEENS8_9Copy_AtomIJNS8_17SM75_U32x4_LDSM_NEhEEENS8_8identityES13_S1D_S1G_S1H_EENS_8epilogue10collective18CollectiveEpilogueINS1J_22Sm90TmaWarpSpecializedILi2ELi2ELi4ELb0ELb1EEEJSL_NS9_IJNSE_ILi64EEES10_EEEvSN_NS_10bfloat16_tESN_NS1J_6fusion15Sm90TreeVisitorINS1R_11Sm90ComputeINS1J_6thread8IdentityES1Q_fLNS_15FloatRoundStyleE2EvEEJNS1S_INS1T_INS_4plusEffLS1W_2EvEEJNS1R_16Sm90RowBroadcastILi0ESL_ffNS9_IJSX_SF_SX_EEELi4ELb1EEENS1S_INS1T_INS_10multipliesEffLS1W_2EvEEJS22_NS1S_IS24_JNS1R_16Sm90ColBroadcastILi0ESL_ffNS9_IJSF_SX_SX_EEELi4ELb1EEENS1R_12Sm90AccFetchEEEEEEEEEEEEES13_NS14_INS15_ILi2ELi4ELi3EEENS17_ILi16EEENST_INS9_IJS19_S10_EEENS9_IJS10_SF_EEEEEEENS8_17SM75_U32x2_LDSM_NENS8_14SM90_TMA_STOREES2I_NS8_17SM90_U32x2_STSM_NENS1E_IJS2L_NS_6half_tEEEEvEEEvvEEEEEEvNT_6ParamsE",
+          "calls": 5,
+          "sum_us": 2845.2690000000002,
+          "category": "GEMM"
+        }
+      ],
+      "sd10_moe_analytical": {
+        "assumed_moe_layers": 40,
+        "zero_pad_weight_fraction_pct": 25.0,
+        "median_total_moe_union_us_per_target_forward": 17345.698486328125,
+        "per_layer_moe_union_us": 433.6424621582031,
+        "rank0_humming_w13_w2_per_layer_us": 425.32914000000005,
+        "routed_rows_R_per_target_forward": 384,
+        "useful_routed_tflops_moe_union": 47.00719883045797,
+        "padded_routed_tflops_moe_union": 62.676265107277295,
+        "useful_routed_tflops_humming_only": 47.925983721689036,
+        "padded_routed_tflops_humming_only": 63.90131162891872,
+        "ratio_vs_bf16_146p419_tflops_useful_union_pct": 32.104575793071916,
+        "ratio_vs_bf16_146p419_tflops_useful_humming_pct": 32.73207966294609,
+        "ratio_vs_bf16_146p419_tflops_padded_humming_pct": 43.642772883928124,
+        "parametric_active_experts_U_one_read_bandwidth": {
+          "128": {
+            "logical_gbs_humming": 707.241079226314,
+            "padded_gbs_humming": 942.9881056350852,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 54.92776232279323,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 73.23701643039095
+          },
+          "192": {
+            "logical_gbs_humming": 1060.861618839471,
+            "padded_gbs_humming": 1414.482158452628,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 82.39164348418984,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 109.85552464558646
+          },
+          "256": {
+            "logical_gbs_humming": 1414.482158452628,
+            "padded_gbs_humming": 1885.9762112701703,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 109.85552464558646,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 146.4740328607819
+          },
+          "384": {
+            "logical_gbs_humming": 2121.723237678942,
+            "padded_gbs_humming": 2828.964316905256,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 164.78328696837968,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 219.7110492911729
+          }
+        },
+        "caveat": "Effective normalized analytical ratios per SD10-PREP.md (not hardware DRAM/PMU counters; active expert union U<=min(384,6R) is not directly emitted in trace; Humming uses BF16 activations x FP4 weights so dense scalar FP8 ceiling is not used as tensor-core utilization)."
+      }
+    },
+    "prefill": {
+      "ranks_analyzed": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "matched_target_forwards": 8,
+      "local_bs_observed": [
+        1
+      ],
+      "chunk_tokens_observed": [
+        4096
+      ],
+      "median_gpu_elapsed_us_per_forward": 388936.70361328125,
+      "median_gpu_busy_union_us_per_forward": 370985.2131347656,
+      "attn_dp_idle_peer_ranks_1_to_7": {
+        "rows": 56,
+        "median_busy_union_us": 378427.5954589844,
+        "median_nccl_union_us": 306650.8229980469,
+        "median_moe_union_us": 54761.081787109375
+      },
+      "per_rank_median_busy_union_us": {
+        "0": 370985.2131347656
+      },
+      "rank_busy_max_over_min_ratio": 1.0,
+      "per_rank_forward_graph_present_fraction": {
+        "0": 1.0,
+        "1": 1.0,
+        "2": 1.0,
+        "3": 1.0,
+        "4": 1.0,
+        "5": 1.0,
+        "6": 1.0,
+        "7": 1.0
+      },
+      "median_category_union_us_per_forward": {
+        "NCCL": 87229.32470703125,
+        "MoE": 63655.56494140625,
+        "attention": 100061.52172851562,
+        "indexer": 639.608154296875,
+        "GEMM": 67581.11181640625,
+        "hc_mhc": 33856.29638671875,
+        "memcpy_memset": 173.95654296875,
+        "other": 17499.583984375
+      },
+      "rank0_forward_graph_present_fraction": 1.0,
+      "rank0_inter_batch_gpu_gap_us": {
+        "n": 7,
+        "p50": 101978.5,
+        "p95": 103784.75,
+        "max": 105439.75
+      },
+      "rank0_top15_kernels": [
+        {
+          "name": "void flashinfer::sparse_mla_sm120::kernels::dsv41_bf16::sparse_mla_prefill_dsv41_bf16_kernel<64, true, (ModelType)6>(flashinfer::sparse_mla_sm120::execution::AttentionParams)",
+          "calls": 304,
+          "sum_us": 769293.501,
+          "category": "attention"
+        },
+        {
+          "name": "ncclDevKernel_Reduce_Sum_bf16_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+          "calls": 320,
+          "sum_us": 411981.486,
+          "category": "NCCL"
+        },
+        {
+          "name": "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm120_b12xDenseGemmKernel_object_at__CopyAtom_ThrID10_TVLayoutSrc1819201_TVLayoutDst1819201_Valuetypef8E4M3FN_tensor00o11_0",
+          "calls": 848,
+          "sum_us": 324086.171,
+          "category": "GEMM"
+        },
+        {
+          "name": "ncclDevKernel_Broadcast_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+          "calls": 184,
+          "sum_us": 210642.548,
+          "category": "NCCL"
+        },
+        {
+          "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<64u, 256u, 64u>, Shape<64u, 32u, 64u>, Shape<0u, 0u, 96u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<4u, 2u, 1u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<8u, 8u, 0u>, LayerConfig, ComputeConfig, TuningConfig>(KernelTensorParamType<TuningConfig::kUseTmaA>::Type, KernelTensorParamType<TuningConfig::kUseTmaB>::Type, KernelTensorParamType<TuningConfig::kUseTmaC>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS2>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS>::Type, KernelTensorParamType<TuningConfig::kUseTmaBZP>::Type, KernelTensorParamType<TuningConfig::kUseTmaBias>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS2>::Type, unsigned int const*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st*, int*, unsigned int, unsigned int, bool)",
+          "calls": 160,
+          "sum_us": 185185.264,
+          "category": "MoE"
+        },
+        {
+          "name": "void humming<MmaOpClass, Shape<0u, 768u, 5120u>, Shape<64u, 256u, 64u>, Shape<64u, 32u, 64u>, Shape<0u, 192u, 0u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<4u, 2u, 1u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<8u, 8u, 0u>, LayerConfig, ComputeConfig, TuningConfig>(KernelTensorParamType<TuningConfig::kUseTmaA>::Type, KernelTensorParamType<TuningConfig::kUseTmaB>::Type, KernelTensorParamType<TuningConfig::kUseTmaC>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS2>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS>::Type, KernelTensorParamType<TuningConfig::kUseTmaBZP>::Type, KernelTensorParamType<TuningConfig::kUseTmaBias>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS2>::Type, unsigned int const*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st*, int*, unsigned int, unsigned int, bool)",
+          "calls": 160,
+          "sum_us": 148514.66,
+          "category": "MoE"
+        },
+        {
+          "name": "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x128_32x3_tn_align8>(cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_256x128_32x3_tn_align8::Params)",
+          "calls": 160,
+          "sum_us": 143724.325,
+          "category": "GEMM"
+        },
+        {
+          "name": "_hc_mix_stats_partial_kernel",
+          "calls": 640,
+          "sum_us": 125953.24,
+          "category": "hc_mhc"
+        },
+        {
+          "name": "void humming<MmaOpClass, Shape<0u, 768u, 5120u>, Shape<32u, 128u, 64u>, Shape<32u, 64u, 32u>, Shape<0u, 192u, 0u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<4u, 2u, 1u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<8u, 8u, 0u>, LayerConfig, ComputeConfig, TuningConfig>(KernelTensorParamType<TuningConfig::kUseTmaA>::Type, KernelTensorParamType<TuningConfig::kUseTmaB>::Type, KernelTensorParamType<TuningConfig::kUseTmaC>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS2>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS>::Type, KernelTensorParamType<TuningConfig::kUseTmaBZP>::Type, KernelTensorParamType<TuningConfig::kUseTmaBias>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS2>::Type, unsigned int const*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st*, int*, unsigned int, unsigned int, bool)",
+          "calls": 160,
+          "sum_us": 85478.357,
+          "category": "MoE"
+        },
+        {
+          "name": "mhc_post_tilelang_kernel",
+          "calls": 320,
+          "sum_us": 76651.731,
+          "category": "hc_mhc"
+        },
+        {
+          "name": "_hc_combine_norm_prefill",
+          "calls": 320,
+          "sum_us": 55634.249,
+          "category": "hc_mhc"
+        },
+        {
+          "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+          "calls": 168,
+          "sum_us": 55106.406,
+          "category": "NCCL"
+        },
+        {
+          "name": "void humming<MmaOpClass, Shape<0u, 5120u, 384u>, Shape<32u, 128u, 64u>, Shape<32u, 64u, 32u>, Shape<0u, 0u, 96u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<4u, 2u, 1u>, FloatingPointType<16u, 8u, 7u>, FloatingPointType<8u, 8u, 0u>, LayerConfig, ComputeConfig, TuningConfig>(KernelTensorParamType<TuningConfig::kUseTmaA>::Type, KernelTensorParamType<TuningConfig::kUseTmaB>::Type, KernelTensorParamType<TuningConfig::kUseTmaC>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS>::Type, KernelTensorParamType<TuningConfig::kUseTmaAS2>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS>::Type, KernelTensorParamType<TuningConfig::kUseTmaBZP>::Type, KernelTensorParamType<TuningConfig::kUseTmaBias>::Type, KernelTensorParamType<TuningConfig::kUseTmaBS2>::Type, unsigned int const*, unsigned int const*, unsigned int const*, unsigned int const*, CUtensorMap_st*, int*, unsigned int, unsigned int, bool)",
+          "calls": 160,
+          "sum_us": 48903.184,
+          "category": "MoE"
+        },
+        {
+          "name": "moe_fused_mul_sum_kernel",
+          "calls": 320,
+          "sum_us": 44231.904,
+          "category": "MoE"
+        },
+        {
+          "name": "_engram_gather_kernel",
+          "calls": 16,
+          "sum_us": 22053.516,
+          "category": "other"
+        }
+      ],
+      "sd10_moe_analytical": {
+        "assumed_moe_layers": 40,
+        "zero_pad_weight_fraction_pct": 25.0,
+        "median_total_moe_union_us_per_target_forward": 63655.56494140625,
+        "per_layer_moe_union_us": 1591.3891235351562,
+        "rank0_humming_w13_w2_per_layer_us": 1462.754578125,
+        "routed_rows_R_per_target_forward": 4096,
+        "useful_routed_tflops_moe_union": 136.63076876948165,
+        "padded_routed_tflops_moe_union": 182.17435835930888,
+        "useful_routed_tflops_humming_only": 148.6460699639111,
+        "padded_routed_tflops_humming_only": 198.19475995188145,
+        "ratio_vs_bf16_146p419_tflops_useful_union_pct": 93.31491730546011,
+        "ratio_vs_bf16_146p419_tflops_useful_humming_pct": 101.52102525212648,
+        "ratio_vs_bf16_146p419_tflops_padded_humming_pct": 135.36136700283532,
+        "parametric_active_experts_U_one_read_bandwidth": {
+          "128": {
+            "logical_gbs_humming": 205.64641840710354,
+            "padded_gbs_humming": 274.19522454280474,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 15.97149532823517,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 21.29532710431356
+          },
+          "192": {
+            "logical_gbs_humming": 308.4696276106553,
+            "padded_gbs_humming": 411.2928368142071,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 23.957242992352757,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 31.94299065647034
+          },
+          "256": {
+            "logical_gbs_humming": 411.2928368142071,
+            "padded_gbs_humming": 548.3904490856095,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 31.94299065647034,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 42.59065420862712
+          },
+          "384": {
+            "logical_gbs_humming": 616.9392552213106,
+            "padded_gbs_humming": 822.5856736284142,
+            "ratio_vs_copy_1287p584_gbs_logical_pct": 47.914485984705514,
+            "ratio_vs_copy_1287p584_gbs_padded_pct": 63.88598131294068
+          }
+        },
+        "caveat": "Effective normalized analytical ratios per SD10-PREP.md (not hardware DRAM/PMU counters; active expert union U<=min(384,6R) is not directly emitted in trace; Humming uses BF16 activations x FP4 weights so dense scalar FP8 ceiling is not used as tensor-core utilization)."
+      }
+    }
+  },
+  "manifest": {
+    "DEV-3H-PLAN.md": {
+      "bytes": 1877,
+      "sha256": "ff1774e72f79445b38cbd7ef0641dd96fe70d18e416877e6c2dbec47331217d1"
+    },
+    "REPORT-tier1-units.md": {
+      "bytes": 3766,
+      "sha256": "63944ba03cc18dd5d2356bd29366ad5dead27fa6ef9725a01c8185bac4466be4"
+    },
+    "TASKS.md": {
+      "bytes": 17926,
+      "sha256": "3585a603555a8f93242f182c5150b3a5e1a4daf7740bea262408112914087856"
+    },
+    "align-cache-tails384-r1-comparison.json": {
+      "bytes": 1788,
+      "sha256": "5d7dd6f9b6fecf95508f223b9283bd6087ec37c74c7986aa6c398e34c459a11a"
+    },
+    "align-cache-tails384-r1-controller.json": {
+      "bytes": 420,
+      "sha256": "7ed2cdb2ec8b0a659e929b83f266d97e19c54ba905a53a2dcc7451e2e2dc508c"
+    },
+    "align-cache-tails384-r1.bench-driver.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "align-cache-tails384-r1.controller.out": {
+      "bytes": 323,
+      "sha256": "ab39d2bed98ad05639ec8ad25a87e05a7f78f6354f894036defaa0a26c1a68d1"
+    },
+    "align-cache-tails384-r1.gpu.csv": {
+      "bytes": 76787,
+      "sha256": "dafdd5092217598ebdf7bdc6347d1de514ac3dd45f1f45ebe23f78389a586976"
+    },
+    "align-cache-tails384-r1.guard.json": {
+      "bytes": 3199,
+      "sha256": "f47e350267a40fcda433ac62034d06c665fc3597addcfe5ba6b852788b64fed2"
+    },
+    "align-cache-tails384-r1.guard.out": {
+      "bytes": 5301,
+      "sha256": "585d507a195ced1af83358aaa61e3999d4986f2d0df76bab25fd6c235f77c16e"
+    },
+    "align-cache-tails384-r1.log": {
+      "bytes": 781129,
+      "sha256": "21d1825e1d6aa4e401781c63e615382ef893f12f209b6e6e61409d26d4155bd9"
+    },
+    "align-cache-tails384-r1.pid": {
+      "bytes": 7,
+      "sha256": "6c948b45d9a6b223fb93c4f3a8daf66f9575ef0dddd9eceae605348b951521bc"
+    },
+    "align-cache-tails384-r1.source.json": {
+      "bytes": 5390,
+      "sha256": "91cbb847afcaa86c221c61f1908067c4589e6d1e634edcd417c40e31f2aa3069"
+    },
+    "align-cache-tails384-r1.source.patch": {
+      "bytes": 41788,
+      "sha256": "4d96f4387423cb670add0b8ce937db2d3db0540746adadf46639eddc68d63cf6"
+    },
+    "repair-fp32mid-r3-multishape-worker.py": {
+      "bytes": 5921,
+      "sha256": "d07c6e6dbeef420516ccadf84e8ee0357ee5bd6fe4eac1ea3366fd8c5f1813a2"
+    },
+    "repair-fp32mid-r3-summary.json": {
+      "bytes": 14852,
+      "sha256": "17df4b569f45e55273ee5651aaa413449f9ad4a725ecad587ac524017f18021b"
+    },
+    "sd-dev3h-r1-analysis.json": {
+      "bytes": 94681,
+      "sha256": "db921fdb4364c2e7d035fdeac43acf9f600c7ee1616a9dde89793fb9568c4a00"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-agent64k.out": {
+      "bytes": 2948,
+      "sha256": "e61f2a643fc040ee54e60f81d264da7c5331a5cbceb0b09670d3f36ef892d0da"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-capacity.out": {
+      "bytes": 2991,
+      "sha256": "5604c2ea8e3c25acf2e896d7b7b8141dd8178e5da61a01a1b36f680fbb429943"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-deterministic.out": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-fixture.out": {
+      "bytes": 48,
+      "sha256": "d306bada34f9d78f12cafa2582613d577c6f6803869d0344fd5d1a988bc30d90"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-independent.out": {
+      "bytes": 1278,
+      "sha256": "51254088ac6fd605885ddecf0f1626ebc03105dfa6380106a4690b3232b442af"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-mixed.out": {
+      "bytes": 142,
+      "sha256": "8cdea2a5c5b674710a54ffe32275c8d96a2f1bfeb88fdc7f0431b279f12f10b7"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-ppl.out": {
+      "bytes": 913,
+      "sha256": "cfe540d7db31e2cbcfc0215f0e494559e427127b13105251aa659736257ca3bf"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-resolved.out": {
+      "bytes": 6652,
+      "sha256": "8fdf5843893503f5896e026c4f81cbc8b7465021afde849087a737eecfebf211"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-shared.out": {
+      "bytes": 1348,
+      "sha256": "58d5374f53adfcd20bdab42c588dd6b91bffff80029b8fcac9e9165116d1c974"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-short.out": {
+      "bytes": 499,
+      "sha256": "e40044f689f8fe5374dcd9a4306edca3f42c24be791ee594c74591c726ee62e6"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p0-smoke.out": {
+      "bytes": 53,
+      "sha256": "77c9dc11c7a63397fc32a226e0d4a36edfb9a7092473ad75a1f882eb2861e640"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-agent64k.out": {
+      "bytes": 2946,
+      "sha256": "9959d934f092afa3ee5a448e7ceab43a4826d43606b6d003171e4b7acde92b08"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-capacity.out": {
+      "bytes": 2991,
+      "sha256": "7d4c4a39bca9db3ee80c259263371f0b6ae5a892d2081cb51b2486f6e86e789c"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-deterministic.out": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-fixture.out": {
+      "bytes": 48,
+      "sha256": "d306bada34f9d78f12cafa2582613d577c6f6803869d0344fd5d1a988bc30d90"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-independent.out": {
+      "bytes": 1279,
+      "sha256": "57160d68bd8a228de1db89276ee7965e0374453bdad92bada17d106ffc2e0fc2"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-mixed.out": {
+      "bytes": 142,
+      "sha256": "8cdea2a5c5b674710a54ffe32275c8d96a2f1bfeb88fdc7f0431b279f12f10b7"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-ppl.out": {
+      "bytes": 914,
+      "sha256": "dd167be8511b6fb5f6e5502e2af590f674122c2dfede90ba3b1703a0ed1d9373"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-profile-decode-shared.out": {
+      "bytes": 593,
+      "sha256": "8c1948ecf16a29dd4e6b21aebfb6157c4319c98603e8ae0311a422c7e8f7a9d9"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-profile-prefill.out": {
+      "bytes": 593,
+      "sha256": "8c1948ecf16a29dd4e6b21aebfb6157c4319c98603e8ae0311a422c7e8f7a9d9"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-resolved.out": {
+      "bytes": 6652,
+      "sha256": "37f899bc1f4da9fbb58a5f75acd8ba3e49a6b5bc781e66de7dc5dae017a6bd13"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-shared.out": {
+      "bytes": 1347,
+      "sha256": "87857ad67bb08b5402f5674ce3f1a2eeb48e4d2566f9e19733013bbdf8669024"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-short.out": {
+      "bytes": 502,
+      "sha256": "9fe2b0e569df22fa7f55742cdccd87a03d9560e1eb91ea5340abb16639bfda87"
+    },
+    "sd-dev3h-r1-budget-sd-dev3h-r1-p1-smoke.out": {
+      "bytes": 53,
+      "sha256": "77c9dc11c7a63397fc32a226e0d4a36edfb9a7092473ad75a1f882eb2861e640"
+    },
+    "sd-dev3h-r1-budget.json": {
+      "bytes": 12871,
+      "sha256": "daf038943baf3428698683b14b452fcbb1a26ccf4cef32b744df2f43938f6c84"
+    },
+    "sd-dev3h-r1-controller.json": {
+      "bytes": 2131,
+      "sha256": "3fb103fead0490f9410abaa99ce4e82509050d4ffb2e7c9f7c61ec2ed672df7c"
+    },
+    "sd-dev3h-r1-decision.json": {
+      "bytes": 1108,
+      "sha256": "a2d2c5ccdf48dd93382bb685e0448483a02ef0dc4ee91458d7c15e888ab02ba5"
+    },
+    "sd-dev3h-r1-p0-32k1k.json": {
+      "bytes": 85766,
+      "sha256": "e3b4c83e912e216f9f64baabd6c0b765d4c8b0613dacf93c0ebaae3dcb2f29eb"
+    },
+    "sd-dev3h-r1-p0-32k1k.out": {
+      "bytes": 1941,
+      "sha256": "59d7444f7af609b0c10ecd0491f4674ffb4c647ec25a923b08b9e64ea74fde2d"
+    },
+    "sd-dev3h-r1-p0-agent64k.json": {
+      "bytes": 349203,
+      "sha256": "c12b3f562c24cc853c26a998e064e1286e6643fae6b49d2fdb122482661c551d"
+    },
+    "sd-dev3h-r1-p0-deterministic.json": {
+      "bytes": 47198,
+      "sha256": "77c603378b998be96f30e5bbf535122506748ecd5497963e1e2b2ffb9d60dc83"
+    },
+    "sd-dev3h-r1-p0-dev-collected.json": {
+      "bytes": 1348,
+      "sha256": "88b41c26d51d34cc481509d1f33423fc89b4210ac1f29cdf5617f80ddc4842d1"
+    },
+    "sd-dev3h-r1-p0-harness-manifest.json": {
+      "bytes": 9322,
+      "sha256": "68fa9fe963eb95ac9ed9686e50b9b4eb82a8be2b6dc22e6d48a7c79d996d1231"
+    },
+    "sd-dev3h-r1-p0-independent128k.json": {
+      "bytes": 67842,
+      "sha256": "d6fffb7eed8cc7309a8d198263c5b174c65e5c8652a066b76e5ee799d1db9e20"
+    },
+    "sd-dev3h-r1-p0-mixed.json": {
+      "bytes": 7056122,
+      "sha256": "4f35271c6ac5f10b4f8d82bd4bd8770ebd8339aebf8ceec8c7984548eb1fae77"
+    },
+    "sd-dev3h-r1-p0-mixed.out": {
+      "bytes": 1208,
+      "sha256": "5b579704ccdfa935d6dd5d1fe0b36f61134887ae8ab1fd651f642e56efe90c14"
+    },
+    "sd-dev3h-r1-p0-models.json": {
+      "bytes": 190,
+      "sha256": "ddc9fc7228335a352a8162d143c511aba7067510e5faf9ad0a151f90a734d17d"
+    },
+    "sd-dev3h-r1-p0-real-short.json": {
+      "bytes": 34901,
+      "sha256": "29d740237f0cff2e97cab01523fdf8001be156392b3e56075fe8bc456374f093"
+    },
+    "sd-dev3h-r1-p0-smoke.json": {
+      "bytes": 1603,
+      "sha256": "498b9c1163de742a1a0117f8308105cb8ec204c6575c6f6be84e5a1e8163a88b"
+    },
+    "sd-dev3h-r1-p0.bench-driver.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sd-dev3h-r1-p0.capacity.json": {
+      "bytes": 4144,
+      "sha256": "3edbdebd2f85b4b8a9fd731859ef330ad9b783b29db2914412901249f34d1509"
+    },
+    "sd-dev3h-r1-p0.gpu.csv": {
+      "bytes": 89527,
+      "sha256": "9bbfed36ab99609bb1709dc264125ec612c4251957e8a60737c8b0afd23a7a86"
+    },
+    "sd-dev3h-r1-p0.guard.json": {
+      "bytes": 3230,
+      "sha256": "6c433088ac3f3b1a0244f07b543a00ed3cd99d2013eb626ea738e7108a7ef8f5"
+    },
+    "sd-dev3h-r1-p0.guard.out": {
+      "bytes": 5413,
+      "sha256": "5def8d218493e4ce85403852ca0bc38a26f0e233be7af37d6d2fc92a9a29d0be"
+    },
+    "sd-dev3h-r1-p0.log": {
+      "bytes": 1227541,
+      "sha256": "4c59263fb99decac00295c26672ea984d12bfdec9713bf258b5e1bc2c85a776b"
+    },
+    "sd-dev3h-r1-p0.pid": {
+      "bytes": 6,
+      "sha256": "f122b76102bcad4c260f87f818e7473e550e92acc98b1544dfe79d81e77e9635"
+    },
+    "sd-dev3h-r1-p0.power.csv": {
+      "bytes": 334303,
+      "sha256": "113c883ee1c24c90c4a14695701a04c8e72610dba33c2473741c3b8cc9d68c82"
+    },
+    "sd-dev3h-r1-p0.resolved.json": {
+      "bytes": 6651,
+      "sha256": "83dca583444c3aeabfb758f1d3cd3fe1b0a32c9ed42908e38c31a0d54c9306cd"
+    },
+    "sd-dev3h-r1-p0.source.json": {
+      "bytes": 5390,
+      "sha256": "d63ea133c37df1f67ff329786810f775de605becfb235f789365046bef2a3d0b"
+    },
+    "sd-dev3h-r1-p0.source.patch": {
+      "bytes": 41788,
+      "sha256": "4d96f4387423cb670add0b8ce937db2d3db0540746adadf46639eddc68d63cf6"
+    },
+    "sd-dev3h-r1-p1-32k1k.json": {
+      "bytes": 85799,
+      "sha256": "1371fb34495cec62fb46a8b9a4f12f9fcbeec94a6733f2be872f1d0cef6da8fd"
+    },
+    "sd-dev3h-r1-p1-32k1k.out": {
+      "bytes": 1940,
+      "sha256": "50514a43206fdb91c7f3cf133495262d941b1026f445cce0815f491cc9cd7f6f"
+    },
+    "sd-dev3h-r1-p1-agent64k.json": {
+      "bytes": 203618,
+      "sha256": "98ed606f731ed14a1e6981e130d5822f1cc84cbaa629a3dc2984c1a5575834bc"
+    },
+    "sd-dev3h-r1-p1-deterministic.json": {
+      "bytes": 48325,
+      "sha256": "db6ca9929bd3c2da6eda11a48a2beace1c05bd18425affc31d3d6decd25a5a27"
+    },
+    "sd-dev3h-r1-p1-dev-collected.json": {
+      "bytes": 1583,
+      "sha256": "811133e347dc5cf5f70e43f2d0fd0b04762b631e27af2a7d12c19301eee3bab5"
+    },
+    "sd-dev3h-r1-p1-harness-manifest.json": {
+      "bytes": 9420,
+      "sha256": "958a0fa34a44f5c9fc5cd2a323fdf0dfb03b4b7e5b66035361f2112a82da87f7"
+    },
+    "sd-dev3h-r1-p1-independent128k.json": {
+      "bytes": 67833,
+      "sha256": "3439db9d1e8156e1d69db8be40b60c303a3bb4c4376b190303325dfeb2fbe4e1"
+    },
+    "sd-dev3h-r1-p1-launch.sh": {
+      "bytes": 2099,
+      "sha256": "5eecbf1ecdb1b6fda9be6979fc5122b98bc52d28406507954a5ffda1c429e0d9"
+    },
+    "sd-dev3h-r1-p1-mixed.json": {
+      "bytes": 7052759,
+      "sha256": "48a00d0410144e80374a0580b67b5bb4e3e1a5f9357ca70bb3919be97c8e0cbb"
+    },
+    "sd-dev3h-r1-p1-mixed.out": {
+      "bytes": 1212,
+      "sha256": "eb79cd34d363e11b110da55ee32041887a3ecf53a0f44a85316d52eea9c0a09f"
+    },
+    "sd-dev3h-r1-p1-models.json": {
+      "bytes": 190,
+      "sha256": "eb217ae39d85f5c62e9ae0c10dff274805d7a57755fa9e247423390c6c2d948c"
+    },
+    "sd-dev3h-r1-p1-real-short.json": {
+      "bytes": 34901,
+      "sha256": "756a90aca5847068ddd6071eabe43f568d3595c3f2776115b5991041e3fc2864"
+    },
+    "sd-dev3h-r1-p1-smoke.json": {
+      "bytes": 1601,
+      "sha256": "01ff1909a578f682daeea95b31ca791434305aafbd4ba658836e91beecd7cee9"
+    },
+    "sd-dev3h-r1-p1.bench-driver.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sd-dev3h-r1-p1.capacity.json": {
+      "bytes": 4144,
+      "sha256": "e4d2ff133b29d839fca0276b8ab6a809f2245656698be49ebcaca886abcf659f"
+    },
+    "sd-dev3h-r1-p1.gpu.csv": {
+      "bytes": 117379,
+      "sha256": "2574dd891b1a8df91a60f5d8d986410a11d74a37420f59c38f9c64ae77978175"
+    },
+    "sd-dev3h-r1-p1.guard.json": {
+      "bytes": 3265,
+      "sha256": "6fe2fd8d74e1587a2b4cc5c27af4d98331fd939eb91808105599ffc1336ae1cd"
+    },
+    "sd-dev3h-r1-p1.guard.out": {
+      "bytes": 6226,
+      "sha256": "f345a837ffe43ef57fa4c19bc023a696d4ca153b8b37830ff41caa3b956112df"
+    },
+    "sd-dev3h-r1-p1.kernel.jsonl": {
+      "bytes": 43324,
+      "sha256": "45b9755c814ef356f85fd563dbece580cea69fb3a9b090aed83d7eaf0a4b712b"
+    },
+    "sd-dev3h-r1-p1.log": {
+      "bytes": 1277319,
+      "sha256": "c316d50a3e05c950dfb15643c57154bcfdded5636fd9e2e42d40cac60a254133"
+    },
+    "sd-dev3h-r1-p1.pid": {
+      "bytes": 6,
+      "sha256": "5bff0435184f3b83f1d16625ed78b6629b4cf87e208189e28906574d8f78e79b"
+    },
+    "sd-dev3h-r1-p1.power.csv": {
+      "bytes": 437392,
+      "sha256": "3c7869627785d70c2691502d4e399f7c8ec73fbe2201c3c67fcc6be2ed7e3aa1"
+    },
+    "sd-dev3h-r1-p1.resolved.json": {
+      "bytes": 6651,
+      "sha256": "662b9d491d8ca0853ed3b5474bcf583443d989a106656b1285234f3c1c7ef2ec"
+    },
+    "sd-dev3h-r1-p1.source.json": {
+      "bytes": 5390,
+      "sha256": "8516ab2ddf5c27b5a378a240cad6c782154da501be74b4881fed9c3a5967fcc6"
+    },
+    "sd-dev3h-r1-p1.source.patch": {
+      "bytes": 41788,
+      "sha256": "4d96f4387423cb670add0b8ce937db2d3db0540746adadf46639eddc68d63cf6"
+    },
+    "sd-dev3h-r1.controller.out": {
+      "bytes": 608,
+      "sha256": "d7413b6b7f626b35081861de331dd4a566860fde2f424716bda3d1921f2fc514"
+    },
+    "sd-dev3h-r1.controller.pid": {
+      "bytes": 6,
+      "sha256": "68bec1e7d5187a290d5ba4a386d95456f3030547a45f7ab9a73165bf1a7ac9d5"
+    }
+  }
+}

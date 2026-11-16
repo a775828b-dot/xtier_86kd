@@ -1,0 +1,129 @@
+{
+  "rounds": 3,
+  "observations_per_round": 100,
+  "all_passed_3pct": false,
+  "max_queued_eager_regression_pct": 36.97125365889357,
+  "max_graph_regression_pct": 19.840639948469295,
+  "timings": [
+    {
+      "name": "standalone_rows384",
+      "queued_eager_off_us": 12.436800077557564,
+      "queued_eager_on_us": 14.742400497198105,
+      "queued_eager_regression_pct": 18.53853407035979,
+      "graph_off_us": 2.0080000162124634,
+      "graph_on_us": 2.4064000695943832,
+      "graph_regression_pct": 19.840639948469295,
+      "passes_3pct": false
+    },
+    {
+      "name": "triton_rope_rows384",
+      "queued_eager_off_us": 17.239999771118164,
+      "queued_eager_on_us": 19.727999716997147,
+      "queued_eager_regression_pct": 14.431554402031255,
+      "graph_off_us": 2.011200040578842,
+      "graph_on_us": 2.2752000018954277,
+      "graph_regression_pct": 13.126489458532632,
+      "passes_3pct": false
+    },
+    {
+      "name": "jit_k_tokens384",
+      "queued_eager_off_us": 2.0479999482631683,
+      "queued_eager_on_us": 2.532800007611513,
+      "queued_eager_regression_pct": 23.67187849587036,
+      "graph_off_us": 1.8255999311804771,
+      "graph_on_us": 2.119999937713146,
+      "graph_regression_pct": 16.126206049005653,
+      "passes_3pct": false
+    },
+    {
+      "name": "jit_q_tokens384_heads32",
+      "queued_eager_off_us": 6.84639997780323,
+      "queued_eager_on_us": 9.377599880099297,
+      "queued_eager_regression_pct": 36.97125365889357,
+      "graph_off_us": 4.03360016644001,
+      "graph_on_us": 3.9312001317739487,
+      "graph_regression_pct": -2.538675883595032,
+      "passes_3pct": false
+    },
+    {
+      "name": "standalone_rows16384",
+      "queued_eager_off_us": 15.459199994802475,
+      "queued_eager_on_us": 17.788799852132797,
+      "queued_eager_regression_pct": 15.069342903342697,
+      "graph_off_us": 5.052800104022026,
+      "graph_on_us": 5.36159984767437,
+      "graph_regression_pct": 6.111457752040095,
+      "passes_3pct": false
+    },
+    {
+      "name": "triton_rope_rows16384",
+      "queued_eager_off_us": 17.764799296855927,
+      "queued_eager_on_us": 20.14240026473999,
+      "queued_eager_regression_pct": 13.383776130276125,
+      "graph_off_us": 13.127999752759933,
+      "graph_on_us": 11.617599800229073,
+      "graph_regression_pct": -11.50517962352433,
+      "passes_3pct": false
+    },
+    {
+      "name": "jit_k_tokens16384",
+      "queued_eager_off_us": 5.116799846291542,
+      "queued_eager_on_us": 4.195199906826019,
+      "queued_eager_regression_pct": -18.011256393651255,
+      "graph_off_us": 5.468799918889999,
+      "graph_on_us": 4.441599920392036,
+      "graph_regression_pct": -18.782914235897906,
+      "passes_3pct": true
+    },
+    {
+      "name": "jit_q_tokens16384_heads32",
+      "queued_eager_off_us": 172.28479981422424,
+      "queued_eager_on_us": 168.49600076675415,
+      "queued_eager_regression_pct": -2.1991487650422914,
+      "graph_off_us": 170.65439820289612,
+      "graph_on_us": 168.15840005874634,
+      "graph_regression_pct": -1.4626040526551254,
+      "passes_3pct": true
+    },
+    {
+      "name": "standalone_rows32768",
+      "queued_eager_off_us": 15.636800229549408,
+      "queued_eager_on_us": 17.86080002784729,
+      "queued_eager_regression_pct": 14.222857398248978,
+      "graph_off_us": 8.128000050783157,
+      "graph_on_us": 8.20159986615181,
+      "graph_regression_pct": 0.9055095338189822,
+      "passes_3pct": false
+    },
+    {
+      "name": "triton_rope_rows32768",
+      "queued_eager_off_us": 24.368000030517578,
+      "queued_eager_on_us": 20.787200331687927,
+      "queued_eager_regression_pct": -14.694680295244545,
+      "graph_off_us": 23.27039986848831,
+      "graph_on_us": 20.201599597930908,
+      "graph_regression_pct": -13.187569994072302,
+      "passes_3pct": true
+    },
+    {
+      "name": "jit_k_tokens32768",
+      "queued_eager_off_us": 8.191999793052673,
+      "queued_eager_on_us": 6.44799992442131,
+      "queued_eager_regression_pct": -21.289061434185875,
+      "graph_off_us": 8.164800330996513,
+      "graph_on_us": 6.497600302100182,
+      "graph_regression_pct": -20.41936068622575,
+      "passes_3pct": true
+    },
+    {
+      "name": "jit_q_tokens32768_heads32",
+      "queued_eager_off_us": 339.6575927734375,
+      "queued_eager_on_us": 333.8207960128784,
+      "queued_eager_regression_pct": -1.718435531765783,
+      "graph_off_us": 340.1584029197693,
+      "graph_on_us": 334.0864062309265,
+      "graph_regression_pct": -1.7850497405689336,
+      "passes_3pct": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "created_unix": 1794833578.1856265,
+  "cache_repair_verified": true,
+  "cache_evidence": "/data/bench/align/align-cache-tails384-r1-comparison.json",
+  "cache_evidence_sha256": "5d7dd6f9b6fecf95508f223b9283bd6087ec37c74c7986aa6c398e34c459a11a",
+  "cache_parameters": {
+    "mem_fraction_static": 0.85,
+    "swa_prefix_tails": 384
+  },
+  "precision_repair_verified": true,
+  "precision_evidence": "/data/bench/align/repair-fp32mid-r3-summary.json",
+  "precision_evidence_sha256": "17df4b569f45e55273ee5651aaa413449f9ad4a725ecad587ac524017f18021b",
+  "reader_hook_dir": "/data/bench/align/repair-a2-reader",
+  "reader_hook_manifest_sha256": {
+    "a2_fp32mid_reader.py": "c056c1577d9faf889079c2cfbabc1cb9247e181fae90e90a58824d1426ba9432",
+    "dsv41_bf16_fp32mid.cu": "3aef23b9705df16eda2e07fc4a8823c9aad06c03504a4e32df9548d52db7326a",
+    "sitecustomize.py": "296da87ba2143f8917f3765e78790f2c325716b429b11394b8ad4b349cc9b296"
+  },
+  "u7_supplements": {
+    "a3_3round": "/data/bench/align/tests/u7-a3-3round-r2-summary.json",
+    "a7_eager_audit": "/data/bench/align/tests/u7-a7-eager-r2-audit.json"
+  }
+}

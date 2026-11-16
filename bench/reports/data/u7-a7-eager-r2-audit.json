@@ -1,0 +1,207 @@
+{
+  "rounds": 3,
+  "observations_per_round": 100,
+  "note": "idle_eager reproduces single-call host Python/Triton launch gap on an idle GPU; queued_eager measures eager launches behind an active GPU stream without host sync between calls. Original idle_eager regression is retained and reported transparently.",
+  "max_idle_eager_regression_pct": 61.366803577798464,
+  "max_queued_eager_regression_pct": 2.0750101261628684,
+  "timings": [
+    {
+      "m": 384,
+      "k": 512,
+      "idle_eager_off_us": 23.391999304294586,
+      "idle_eager_on_us": 37.63199970126152,
+      "idle_eager_delta_us": 14.240000396966934,
+      "idle_eager_regression_pct": 60.87551650342509,
+      "queued_eager_off_us": 1.7920000245794654,
+      "queued_eager_on_us": 1.787999994121492,
+      "queued_eager_regression_pct": -0.2232159823163049
+    },
+    {
+      "m": 384,
+      "k": 1024,
+      "idle_eager_off_us": 23.19999970495701,
+      "idle_eager_on_us": 36.73600032925606,
+      "idle_eager_delta_us": 13.53600062429905,
+      "idle_eager_regression_pct": 58.344831019143896,
+      "queued_eager_off_us": 1.7920000245794654,
+      "queued_eager_on_us": 1.787999994121492,
+      "queued_eager_regression_pct": -0.2232159823163049
+    },
+    {
+      "m": 384,
+      "k": 2048,
+      "idle_eager_off_us": 22.943999618291855,
+      "idle_eager_on_us": 37.02399879693985,
+      "idle_eager_delta_us": 14.079999178647995,
+      "idle_eager_regression_pct": 61.366803577798464,
+      "queued_eager_off_us": 2.0439999643713236,
+      "queued_eager_on_us": 1.7920000245794654,
+      "queued_eager_regression_pct": -12.328764392584823
+    },
+    {
+      "m": 384,
+      "k": 4096,
+      "idle_eager_off_us": 23.104000836610794,
+      "idle_eager_on_us": 36.896001547575,
+      "idle_eager_delta_us": 13.792000710964203,
+      "idle_eager_regression_pct": 59.695291774354864,
+      "queued_eager_off_us": 2.940000034868717,
+      "queued_eager_on_us": 2.300000051036477,
+      "queued_eager_regression_pct": -21.768706674890183
+    },
+    {
+      "m": 384,
+      "k": 5120,
+      "idle_eager_off_us": 23.24800007045269,
+      "idle_eager_on_us": 36.607999354600906,
+      "idle_eager_delta_us": 13.359999284148216,
+      "idle_eager_regression_pct": 57.46730576247829,
+      "queued_eager_off_us": 2.6839999482035637,
+      "queued_eager_on_us": 2.555999904870987,
+      "queued_eager_regression_pct": -4.7690031968237845
+    },
+    {
+      "m": 384,
+      "k": 7168,
+      "idle_eager_off_us": 26.095999404788017,
+      "idle_eager_on_us": 36.687999963760376,
+      "idle_eager_delta_us": 10.592000558972359,
+      "idle_eager_regression_pct": 40.588599021154835,
+      "queued_eager_off_us": 3.5800000187009573,
+      "queued_eager_on_us": 2.8119999915361404,
+      "queued_eager_regression_pct": -21.45251461321205
+    },
+    {
+      "m": 16384,
+      "k": 512,
+      "idle_eager_off_us": 26.30399912595749,
+      "idle_eager_on_us": 36.73600032925606,
+      "idle_eager_delta_us": 10.432001203298569,
+      "idle_eager_regression_pct": 39.6593732889992,
+      "queued_eager_off_us": 7.8039998188614845,
+      "queued_eager_on_us": 6.779999937862158,
+      "queued_eager_regression_pct": -13.121474945763346
+    },
+    {
+      "m": 16384,
+      "k": 1024,
+      "idle_eager_off_us": 26.38399973511696,
+      "idle_eager_on_us": 36.848001182079315,
+      "idle_eager_delta_us": 10.464001446962357,
+      "idle_eager_regression_pct": 39.66040612498502,
+      "queued_eager_off_us": 13.819999992847443,
+      "queued_eager_on_us": 12.923999689519405,
+      "queued_eager_regression_pct": -6.483359651170506
+    },
+    {
+      "m": 16384,
+      "k": 2048,
+      "idle_eager_off_us": 36.240000277757645,
+      "idle_eager_on_us": 44.335998594760895,
+      "idle_eager_delta_us": 8.09599831700325,
+      "idle_eager_regression_pct": 22.339951034636663,
+      "queued_eager_off_us": 24.44400079548359,
+      "queued_eager_on_us": 22.523999214172363,
+      "queued_eager_regression_pct": -7.854694480561363
+    },
+    {
+      "m": 16384,
+      "k": 4096,
+      "idle_eager_off_us": 165.8720001578331,
+      "idle_eager_on_us": 176.80000513792038,
+      "idle_eager_delta_us": 10.92800498008728,
+      "idle_eager_regression_pct": 6.588215593764413,
+      "queued_eager_off_us": 147.1959948539734,
+      "queued_eager_on_us": 148.7320065498352,
+      "queued_eager_regression_pct": 1.0435145992835126
+    },
+    {
+      "m": 16384,
+      "k": 5120,
+      "idle_eager_off_us": 209.51999723911285,
+      "idle_eager_on_us": 224.04800355434418,
+      "idle_eager_delta_us": 14.528006315231323,
+      "idle_eager_regression_pct": 6.933947359044379,
+      "queued_eager_off_us": 191.2280023097992,
+      "queued_eager_on_us": 195.1960027217865,
+      "queued_eager_regression_pct": 2.0750101261628684
+    },
+    {
+      "m": 16384,
+      "k": 7168,
+      "idle_eager_off_us": 291.1999970674515,
+      "idle_eager_on_us": 303.5520017147064,
+      "idle_eager_delta_us": 12.352004647254944,
+      "idle_eager_regression_pct": 4.2417598803731416,
+      "queued_eager_off_us": 273.66000413894653,
+      "queued_eager_on_us": 274.5560109615326,
+      "queued_eager_regression_pct": 0.3274160670300619
+    },
+    {
+      "m": 32768,
+      "k": 512,
+      "idle_eager_off_us": 26.11199952661991,
+      "idle_eager_on_us": 36.22400015592575,
+      "idle_eager_delta_us": 10.11200062930584,
+      "idle_eager_regression_pct": 38.72549330815187,
+      "queued_eager_off_us": 13.56399990618229,
+      "queued_eager_on_us": 12.923999689519405,
+      "queued_eager_regression_pct": -4.718373791577369
+    },
+    {
+      "m": 32768,
+      "k": 1024,
+      "idle_eager_off_us": 34.60799902677536,
+      "idle_eager_on_us": 43.82399842143059,
+      "idle_eager_delta_us": 9.215999394655228,
+      "idle_eager_regression_pct": 26.629679998329394,
+      "queued_eager_off_us": 23.932000622153282,
+      "queued_eager_on_us": 22.39600010216236,
+      "queued_eager_regression_pct": -6.418186863028419
+    },
+    {
+      "m": 32768,
+      "k": 2048,
+      "idle_eager_off_us": 164.11200165748596,
+      "idle_eager_on_us": 176.03200674057007,
+      "idle_eager_delta_us": 11.920005083084106,
+      "idle_eager_regression_pct": 7.263335382357994,
+      "queued_eager_off_us": 146.81600034236908,
+      "queued_eager_on_us": 148.8640010356903,
+      "queued_eager_regression_pct": 1.3949437994124514
+    },
+    {
+      "m": 32768,
+      "k": 4096,
+      "idle_eager_off_us": 330.2080035209656,
+      "idle_eager_on_us": 342.8959995508194,
+      "idle_eager_delta_us": 12.68799602985382,
+      "idle_eager_regression_pct": 3.8424253484359294,
+      "queued_eager_off_us": 311.9319975376129,
+      "queued_eager_on_us": 314.74798917770386,
+      "queued_eager_regression_pct": 0.9027581852199651
+    },
+    {
+      "m": 32768,
+      "k": 5120,
+      "idle_eager_off_us": 409.0079963207245,
+      "idle_eager_on_us": 425.56799948215485,
+      "idle_eager_delta_us": 16.56000316143036,
+      "idle_eager_regression_pct": 4.048821370339373,
+      "queued_eager_off_us": 391.0439908504486,
+      "queued_eager_on_us": 396.92801237106323,
+      "queued_eager_regression_pct": 1.5046955478891233
+    },
+    {
+      "m": 32768,
+      "k": 7168,
+      "idle_eager_off_us": 566.5759742259979,
+      "idle_eager_on_us": 582.4479758739471,
+      "idle_eager_delta_us": 15.872001647949219,
+      "idle_eager_regression_pct": 2.8013898170729856,
+      "queued_eager_off_us": 550.462007522583,
+      "queued_eager_on_us": 553.7279844284058,
+      "queued_eager_regression_pct": 0.5933155896665099
+    }
+  ]
+}

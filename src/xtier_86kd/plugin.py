@@ -57,4 +57,3 @@ def load():
 
         traceback.print_exc(file=sys.stderr)
         raise SystemExit(f"xtier_86kd plugin setup failed: {type(exc).__name__}: {exc}") from exc
-
