@@ -34,16 +34,78 @@ API_KEY_FILE = Path("/data/sglang-api-key")
 STATE_DIR = Path("/data/xtier-86kd-console")
 LOG_DIR = STATE_DIR / "logs"
 
-MODEL = {'id': 'ds41-86kd', 'order': 10, 'name': 'DeepSeek V4.1 Flash 1017', 'code': 'DSV4.1 · TP8 FP4 KV', 'port': 30000, 'served': 'DeepSeek-V4.1-Flash-1017', 'spec': 'DSpark', 'arch': 'TP8 · DP Attention 8 · DP LM Head · Humming · 86KD', 'hardware': 'RTX PRO 6000D × 8 · tf500', 'ready_timeout': 3600, 'bench': {'kind': 'text', 'dec': '4214 · 64路开发实测', 'pre': '20543 · 64路开发实测', 'title': '2026-11-16 单轮精简开发验证（sd-dev3h-r1-p1，mem=0.85，tails=384，A1/A2/A3/A7+FP32-mid reader）：32K/1K 64路冷prefill 20543 tok/s、decode 4214 tok/s（单发 P 2315 / D 275.2）；64×128K（命中99.79%，14.4s共同窗口）冷prefill 20660、纯decode 3567 tok/s；64路短提示 D 2922 tok/s；最低空闲4858MiB。单轮开发实测，非3轮/1M正式全量验收。'}, 'options': [{'key': 'packs', 'label': '86KD 加速包', 'default': 'on', 'choices': [['on', '开']]}, {'key': 'spec', 'label': 'DSpark 投机解码', 'default': 'on', 'choices': [['on', '开 · draft 6']]}, {'key': 'verify', 'label': 'DSpark 验证', 'default': 'compact', 'choices': [['compact', '变长 · 本机成本表']]}, {'key': 'context', 'label': '上下文长度', 'default': '1048576', 'choices': [['1048576', '1M']]}, {'key': 'running', 'label': '最大并行请求', 'default': '64', 'choices': [['64', '64']]}, {'key': 'graph', 'label': 'Decode CUDA 图批量', 'default': '64', 'choices': [['64', '64']]}, {'key': 'memory', 'label': '静态显存比例', 'default': '0.85', 'choices': [['0.85', '0.85']]}, {'key': 'chunk', 'label': 'Prefill 分块', 'default': '32768', 'choices': [['32768', '32K']]}, {'key': 'interval', 'label': 'Prefill 中穿插 decode', 'default': '10', 'choices': [['10', '10 步']]}, {'key': 'tails', 'label': 'SWA 前缀尾部预算', 'default': '384', 'choices': [['384', '384']]}, {'key': 'kvpool', 'label': 'KV 逻辑总量（实测）', 'default': '67450880', 'choices': [['67450880', '67.45M · 启动时核实']]}, {'key': 'align', 'label': 'DeepInfer 第一档对齐', 'default': 'on', 'choices': [['on', '开 · 开发验证（A1/A2/A3/A7）'], ['off', '关 · 开发基线（p0）']]}], 'notes': [{'when': {}, 'text': '压缩主 KV 为 FP4，SWA 为 FP8；当前配置实测逻辑 KV 总量 67,450,880 token（每 DP 8,431,360）。容量由启动时分配决定，不代表已验证同等长度并发。'}, {'when': {}, 'text': '每 DP SWA 池 165,376 token；64×128K 两阶段实测命中 99.79%（14.4s 共同窗口 D 3567 tok/s），全程最低空闲 4858 MiB（4.744 GiB）。1M 为配置上限，尚未做 1M 验收。'}, {'when': {}, 'text': 'DeepInfer A1/A2/A3/A7 + 外置 FP32-mid reader 已通过单轮精简开发验证（sd-dev3h-r1，3段PPL +0.067%，U5全形状优于off），未标3轮/全矩阵正式验收；可切换回 p0 基线。点击启动才加载模型。'}]}
+MODEL = {
+    'id': 'ds41-86kd',
+    'order': 10,
+    'name': 'DeepSeek V4.1 Flash 1017',
+    'code': 'DSV4.1 · TP8 FP4 KV · MXMMA',
+    'port': 30000,
+    'served': 'DeepSeek-V4.1-Flash-1017',
+    'spec': 'DSpark',
+    'arch': 'TP8 · DP Attention 8 · DP LM Head · Humming MXMMA e3m4 · 86KD',
+    'hardware': 'RTX PRO 6000D × 8 · tf500',
+    'ready_timeout': 3600,
+    'bench': {
+        'kind': 'text',
+        'dec': '4863 · 64路实测（窗口 4967）',
+        'pre': '26478 · 64路实测（单发 10886）',
+        'title': (
+            '2026-11-17 8h 双引擎深度优化实测（sd-popt6-dp8sps，mem=0.85，tails=384，CHUNK=49152，'
+            'FP8 DP Gatherv + 目标/草稿 MXMMA e3m4 pad(128,128) + 全形状 MXFP8 + DP8 SPS 表 + A1/2/3/7 + FP32-mid reader）：'
+            '全局主 KV 113,569,792 token（+68.4%）；1×32K 冷 P 10674–10886 tok/s（4.6–4.7×）；'
+            '64×32K 冷 P 26042–26106 tok/s（+27%）、共享前缀 D 4863 tok/s（窗口 4967，+15.4%，P50/P95 TPOT 8.89/9.40ms）；'
+            '64×128K（命中99.79%）冷 P 26478 tok/s（+28.2%）、纯 D 窗口 3895 tok/s（输出 3760，47.2ms/步）；'
+            '64路短提示 D 3183–3285 tok/s；3段 PPL 2.0708（+0.078%）；全程最低空闲 1996 MiB（1.949 GiB）。'
+        ),
+    },
+    'options': [
+        {'key': 'packs', 'label': '86KD 加速包', 'default': 'on', 'choices': [['on', '开']]},
+        {'key': 'popt', 'label': '双引擎深度加速（Step 1–5）', 'default': 'on', 'choices': [['on', '开 · MXMMA e3m4 + FP8 Gather + 全形状 MXFP8'], ['off', '关 · 回退历史基线（W4A16）']]},
+        {'key': 'spec', 'label': 'DSpark 投机解码', 'default': 'on', 'choices': [['on', '开 · draft 6']]},
+        {'key': 'verify', 'label': 'DSpark 验证成本表', 'default': 'compact', 'choices': [['compact', '变长 · DP8 实测表（推荐）'], ['compact_legacy', '变长 · 旧版成本表（超短输入）']]},
+        {'key': 'context', 'label': '上下文长度', 'default': '1048576', 'choices': [['1048576', '1M']]},
+        {'key': 'running', 'label': '最大并行请求', 'default': '64', 'choices': [['64', '64']]},
+        {'key': 'graph', 'label': 'Decode CUDA 图批量', 'default': '64', 'choices': [['64', '64']]},
+        {'key': 'memory', 'label': '静态显存比例', 'default': '0.85', 'choices': [['0.85', '0.85']]},
+        {'key': 'chunk', 'label': 'Prefill 分块', 'default': '49152', 'choices': [['49152', '48K · 巅峰吞吐（推荐）'], ['40960', '40K · 高余量稳健'], ['32768', '32K · 历史基线']]},
+        {'key': 'interval', 'label': 'Prefill 中穿插 decode', 'default': '10', 'choices': [['10', '10 步']]},
+        {'key': 'tails', 'label': 'SWA 前缀尾部预算', 'default': '384', 'choices': [['384', '384']]},
+        {'key': 'kvpool', 'label': 'KV 逻辑总量（实测）', 'default': '113569792', 'choices': [['113569792', '113.57M · 启动时核实']]},
+        {'key': 'align', 'label': 'DeepInfer 第一档对齐', 'default': 'on', 'choices': [['on', '开 · 开发验证（A1/A2/A3/A7）'], ['off', '关 · 开发基线（p0）']]},
+    ],
+    'notes': [
+        {'when': {}, 'text': '启用 Step 1–5 深度加速后，Humming MoE 采用 SM120 原生 MXMMA float8e3m4 + pad(128,128)，每卡权重由 56.82 GiB 降至 51.84 GiB，全局压缩主 KV 容量达 113,569,792 token（每 DP 14,196,224，较旧基线 +68.4%）。'},
+        {'when': {}, 'text': '实测单发 32K 冷 Prefill 达 10,674–10,886 tok/s（自动 16K 续块）；64×32K 冷 Prefill 26,042 tok/s、共享前缀 Decode 4,863 tok/s（窗口 4,967）；64×128K 冷 Prefill 26,478 tok/s、纯 Decode 窗口 3,895 tok/s（47.2 ms/步），最低空闲显存 1.949 GiB。'},
+        {'when': {}, 'text': '可随时将「双引擎深度加速」或「DeepInfer 第一档对齐」切回「关」做无侵入回退对比。点击启动按钮才加载模型。'},
+    ],
+}
 
+
+def _resolve_sps_table(popt_on: bool, verify_opt: str, deploy_dir: Path) -> str:
+    if popt_on and verify_opt == "compact":
+        for cand in (
+            deploy_dir.parent / "bench" / "86kd-sps-6000d-dp8.json",
+            Path("/data/bench/align/86kd-sps-6000d-dp8.json"),
+        ):
+            if cand.is_file():
+                return str(cand)
+    return "/data/bench/86kd-sps-6000d.json"
 
 
 def build(options, port):
+    deploy_dir = Path(__file__).resolve().parent
+    spec_on = options.get("spec", "on") == "on"
+    popt_on = options.get("popt", "on") == "on"
+    align_on = options.get("align", "on") == "on"
+    verify_opt = options.get("verify", "compact")
+    verify_mode = "compact" if verify_opt in ("compact", "compact_legacy") else verify_opt
+    sps_table = _resolve_sps_table(popt_on, verify_opt, deploy_dir) if (spec_on and verify_mode == "compact") else ""
+
     env = {
-        "XTIER_86KD": "1" if options["packs"] == "on" else "0",
-        "USE_DSPARK": "1" if options["spec"] == "on" else "0",
-        "SGLANG_RAGGED_VERIFY_MODE": options["verify"] if options["spec"] == "on" else "static",
-        "SPS_TABLE": "/data/bench/86kd-sps-6000d.json" if options["spec"] == "on" and options["verify"] == "compact" else "",
+        "XTIER_86KD": "1" if options.get("packs", "on") == "on" else "0",
+        "USE_DSPARK": "1" if spec_on else "0",
+        "SGLANG_RAGGED_VERIFY_MODE": verify_mode if spec_on else "static",
+        "SPS_TABLE": sps_table,
         "CONTEXT_LENGTH": options["context"],
         "MAX_RUNNING": options["running"],
         "CUDA_GRAPH_MAX_BS_DECODE": options["graph"],
@@ -53,30 +115,64 @@ def build(options, port):
         "MOE_BACKEND": "humming",
         "API_KEY_FILE": str(API_KEY_FILE),
     }
-    align_on = options.get("align") == "on"
-    hook_dir = Path(__file__).resolve().parent / "repair-a2-reader"
-    if not (hook_dir / "sitecustomize.py").is_file():
-        hook_dir = Path("/data/bench/align/repair-a2-reader")
-    py_path = f"{hook_dir}:/data/src/sglang-align/python" if align_on else "/data/src/sglang-align/python"
+
+    if popt_on:
+        hook_dir = deploy_dir / "prefill-opt"
+        if not (hook_dir / "sitecustomize.py").is_file():
+            hook_dir = Path("/data/bench/align/prefill-opt-v1")
+        py_path = f"{hook_dir}:/data/src/sglang-align/python"
+        popt_env = {
+            "XTIER_PREFILL_OPT": "1",
+            "SGLANG_ENABLE_DP_GATHER_FP8": "1",
+            "XTIER_PREFILL_NCCL_SKIP_ZERO": "1",
+            "XTIER_IDLE_SINGLE_CHUNK": "16384",
+            "XTIER_PREFILL_MOE_MXMMA": "e3m4",
+            "XTIER_DRAFT_MOE_MXMMA": "e3m4",
+            "XTIER_MOE_PAD_N": "128",
+            "XTIER_MOE_PAD_K": "128",
+            "XTIER_86KD_MXFP8_TABLE": "1",
+            "XTIER_DS_WO_A_PREFILL_MXFP8": "0",
+        }
+    else:
+        if align_on:
+            hook_dir = deploy_dir / "repair-a2-reader"
+            if not (hook_dir / "sitecustomize.py").is_file():
+                hook_dir = Path("/data/bench/align/repair-a2-reader")
+            py_path = f"{hook_dir}:/data/src/sglang-align/python"
+        else:
+            py_path = "/data/src/sglang-align/python"
+        popt_env = {
+            "XTIER_PREFILL_OPT": "0",
+            "SGLANG_ENABLE_DP_GATHER_FP8": "0",
+            "XTIER_86KD_MXFP8_TABLE": "0",
+            "XTIER_DS_WO_A_MAX_T": "16",
+        }
+
     env.update({
         "PYTHONPATH": py_path,
-        "CHUNK": options["chunk"], "INTERVAL": options["interval"],
-        "SGLANG_DP_USE_GATHERV": "1", "SGLANG_DP_USE_REDUCE_SCATTER": "1",
-        "SGLANG_DSV4_KV_LAYOUT": "v41_new", "SGLANG_DSV4_COMPRESSED_KV_LAYOUT": "auto",
+        "CHUNK": options["chunk"],
+        "INTERVAL": options["interval"],
+        "SGLANG_DP_USE_GATHERV": "1",
+        "SGLANG_DP_USE_REDUCE_SCATTER": "1",
+        "SGLANG_DSV4_KV_LAYOUT": "v41_new",
+        "SGLANG_DSV4_COMPRESSED_KV_LAYOUT": "auto",
         "SGLANG_SM120_DSV41_KV": "1",
         "SGLANG_DI_ALIGN": "0",
         **{f"SGLANG_DI_ALIGN_A{i}": ("1" if align_on and i in (1, 2, 3, 7) else "0") for i in range(1, 9)},
         "SGLANG_REPAIR_A2_FP32MID": "1" if align_on else "0",
+        **popt_env,
         "EXTRA_ARGS": "--attn-dp-size 8 --enable-dp-lm-head --min-free-slots-delay 1 --swa-prefix-tails " + options["tails"],
     })
     return env, ["/bin/bash", "/data/src/xtier_86kd/deploy/start-tp8-fp4-card.sh"]
 
 
-
-
 def tags(options):
-    res = ["TP8", "86KD" if options["packs"] == "on" else "基线",
-           "变长验证" if options["spec"] == "on" and options["verify"] == "compact" else "固定验证"]
+    verify_opt = options.get("verify", "compact")
+    is_compact = options.get("spec", "on") == "on" and verify_opt in ("compact", "compact_legacy")
+    res = ["TP8", "86KD" if options.get("packs") == "on" else "基线",
+           "变长验证" if is_compact else "固定验证"]
+    if options.get("popt", "on") == "on":
+        res.append("MXMMA·双引擎加速")
     if options.get("align") == "on":
         res.append("DI第一档·开发验证")
     return res
@@ -255,8 +351,8 @@ class Tf500Console(core.Console):
     def console_data(self):
         data = super().console_data()
         data["texts"] = {
-            "subtitle": "tf500 · TP8 / DP8 · FP4 KV · DeepSeek V4.1 Flash 1017",
-            "foot": "当前为单轮精简开发验证通过配置（sd-dev3h-r1，非3轮/1M正式全量验收）。模型由启动按钮手动加载。",
+            "subtitle": "tf500 · TP8 / DP8 · FP4 KV · MXMMA · DeepSeek V4.1 Flash 1017",
+            "foot": "默认搭载 8h 双引擎深度加速与 DP8 实测 SPS 成本表（sd-popt6-dp8sps 实测通过，支持下拉一键回退历史基线）。模型由启动按钮手动加载。",
             "confirm": "启动 {name}？\n会先停止正在运行的模型，加载可能需要较长时间。API 将监听 <TF500_IP>:{port}。",
             "endpoint": "http://<TF500_IP>:{port}/v1 · {served}",
         }

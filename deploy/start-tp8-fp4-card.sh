@@ -37,6 +37,15 @@ API_KEY_FILE=${API_KEY_FILE:-}
 }
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+if [ "${XTIER_PREFILL_OPT:-0}" = 1 ]; then
+  if [ -r "$SCRIPT_DIR/prefill-opt/sitecustomize.py" ]; then
+    true
+  elif [ -r /data/bench/align/prefill-opt-v1/sitecustomize.py ]; then
+    true
+  else
+    echo 'Prefill/MoE opt hook unreadable in deploy/prefill-opt or /data/bench/align/prefill-opt-v1' >&2; exit 1;
+  fi
+fi
 if [ "${SGLANG_DI_ALIGN_A2:-0}" = 1 ] && [ "${SGLANG_REPAIR_A2_FP32MID:-0}" = 1 ]; then
   if [ -r "$SCRIPT_DIR/repair-a2-reader/sitecustomize.py" ]; then
     true
