@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Speed Test Matrix · DeepSeek-V4.1-Flash-1017 · TF500 vs LocalMaxxing</title>
+
+<style>
+  :root {
+    --bg: var(--background, #f8fafc);
+    --surface: var(--card, #ffffff);
+    --fg: var(--foreground, #0f172a);
+    --muted: var(--muted-foreground, #64748b);
+    --bdr: var(--border, #e2e8f0);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1420px; margin: 0 auto; }
+  .card {
+    background: var(--surface); border: 1px solid var(--bdr);
+    border-radius: 18px; padding: 24px; margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+  }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: #0284c7; text-transform: uppercase; }
+  h1 { margin: 6px 0 8px; font-size: 26px; font-weight: 800; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; }
+  .kpi { border: 1px solid var(--bdr); border-radius: 14px; padding: 16px; background: rgba(2,132,199,0.03); }
+  .kpi-lbl { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .kpi-val { font-size: 26px; font-weight: 800; margin: 4px 0; }
+  .kpi-sub { font-size: 12px; color: var(--muted); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    border: 1px solid var(--bdr); background: var(--surface); color: var(--fg);
+    padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .tab-btn.active { background: #0284c7; color: #fff; border-color: #0284c7; }
+  .matrix-grid { width: 100%; border-collapse: separate; border-spacing: 8px; }
+  .matrix-grid th {
+    background: rgba(148,163,184,0.12); padding: 10px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; text-align: center;
+  }
+  .ctx-cell {
+    background: rgba(148,163,184,0.12); padding: 12px; border-radius: 10px;
+    font-weight: 800; font-size: 15px; width: 110px; text-align: left;
+  }
+  .mcell {
+    border: 1px solid var(--bdr); border-radius: 12px; padding: 10px 12px;
+    vertical-align: top; transition: transform 0.12s ease; min-width: 140px;
+  }
+  .mcell:hover { transform: translateY(-2px); }
+  .mcell.win-strong { background: rgba(16,185,129,0.13); border-color: rgba(16,185,129,0.45); }
+  .mcell.win-mid { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.3); }
+  .mcell.overcap { background: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.5); }
+  .mcell.behind { background: rgba(245,158,11,0.09); border-color: rgba(245,158,11,0.35); }
+  .m-main { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .m-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 6px;
+    font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .pill.green { background: #059669; color: #fff; }
+  .pill.purple { background: #7c3aed; color: #fff; }
+  .pill.amber { background: #fef3c7; color: #92400e; }
+  .pill.neutral { background: rgba(148,163,184,0.2); color: var(--fg); }
+  .prefill-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; }
+  .pbox { border: 1px solid var(--bdr); border-radius: 12px; padding: 12px; }
+  .tbl-all { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tbl-all th, .tbl-all td { padding: 8px 10px; border-bottom: 1px solid var(--bdr); text-align: right; }
+  .tbl-all th:first-child, .tbl-all td:first-child,
+  .tbl-all th:nth-child(2), .tbl-all td:nth-child(2) { text-align: left; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="eyebrow">Speed Test Matrix · DeepSeek-V4.1-Flash-1017 (rev 1bae0e10)</div>
+    <h1>TF500 (8× RTX PRO 6000D 84GB · 669GB) vs LocalMaxxing (8× PRO 6000 96GB · 768GB)</h1>
+    <div class="sub">
+      我们：SGLang + xtier_86kd (Step 1–5 MXMMA e3m4 · FP4 主 KV 1.136亿 tok · Attention DP8) &nbsp;|&nbsp;
+      对照标杆：@alvarobartt · vLLM 0.32.0 (TP8+EP · DSpark · 96GB×8)
+    </div>
+    <div id="kpi-row" class="kpis"></div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="setMode('vs', this)">横向胜率对标矩阵 (TF500 vs 96GB×8)</button>
+      <button class="tab-btn" onclick="setMode('ours', this)">TF500 纯速度矩阵 (Total tok/s)</button>
+      <button class="tab-btn" onclick="setMode('ref', this)">原榜单矩阵 (8× PRO 6000 96GB)</button>
+      <button class="tab-btn" onclick="setMode('table', this)">全部 65 项实测明细对比表</button>
+    </div>
+    <div id="main-view" style="overflow-x:auto;"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 6px;font-size:19px;">Cold Prefill 阶梯对比 (8K → 1,048,512 tokens · 单流 c=1 vs 满载并发 DP8)</h2>
+    <div class="sub">DP8 架构下单请求 (c=1) 仅激活 1/8 卡注意力；多并发填满 8 个 DP 槽后算力全开，反超单流上限 +66%</div>
+    <div id="prefill-view" class="prefill-strip"></div>
+  </div>
+</div>
+
+<script>
+const RAW = {"tf500": {"benchmark": "LocalMaxxing Speed Test Matrix Head-to-Head (TF500 8x PRO 6000D 84GB vs 8x PRO 6000 96GB)", "reference_url": "https://www.localmaxxing.com/es/inference-benchmarks/cmw41hn3g0c5goa01z8a4ylt4", "model": "DeepSeek-V4.1-Flash-1017", "revision": "1bae0e1088993b9b82de08f59de5be5a34e42170", "host": "<TF500_IP>", "port": 30000, "api_key_file": "<API_KEY_FILE>", "measured_date": "2026-11-17", "server_info": {"dp_ranks": 8, "tp_size": 8, "per_dp_token_capacity": 14196224, "global_kv_tokens": 113569792, "per_dp_swa_capacity": 169472, "per_dp_fp4_indexer_wave_cap_tokens": 2097152, "weight_gib_per_gpu": 51.842, "startup_available_gib": 10.031}, "prefill_single": [{"context": "8K", "target_tokens": 8192, "prompt_tokens": 8193, "concurrency": 1, "status": "Valid", "prefill_tok_s": 9265.8, "ttft_ms": 895.9, "completed_requests": 2, "cached_tokens": 0}, {"context": "16K", "target_tokens": 16384, "prompt_tokens": 16385, "concurrency": 1, "status": "Valid", "prefill_tok_s": 10171.3, "ttft_ms": 1610.9, "completed_requests": 2, "cached_tokens": 0}, {"context": "32K", "target_tokens": 32768, "prompt_tokens": 32769, "concurrency": 1, "status": "Valid", "prefill_tok_s": 10219.2, "ttft_ms": 3206.6, "completed_requests": 2, "cached_tokens": 0}, {"context": "64K", "target_tokens": 65536, "prompt_tokens": 65537, "concurrency": 1, "status": "Valid", "prefill_tok_s": 11132.4, "ttft_ms": 5887.1, "completed_requests": 2, "cached_tokens": 0}, {"context": "128K", "target_tokens": 131072, "prompt_tokens": 131073, "concurrency": 1, "status": "Valid", "prefill_tok_s": 11294.8, "ttft_ms": 11604.7, "completed_requests": 2, "cached_tokens": 0}, {"context": "256K", "target_tokens": 262144, "prompt_tokens": 262145, "concurrency": 1, "status": "Valid", "prefill_tok_s": 11269.9, "ttft_ms": 23260.7, "completed_requests": 1, "cached_tokens": 0}, {"context": "512K", "target_tokens": 524288, "prompt_tokens": 524289, "concurrency": 1, "status": "Valid", "prefill_tok_s": 10849.6, "ttft_ms": 48323.4, "completed_requests": 1, "cached_tokens": 0}, {"context": "1019K", "target_tokens": 1043456, "prompt_tokens": 1043445, "concurrency": 1, "status": "Valid", "prefill_tok_s": 9957.5, "ttft_ms": 104789.8, "completed_requests": 1, "cached_tokens": 0}, {"context": "1,048,512", "target_tokens": 1048512, "prompt_tokens": 1048503, "concurrency": 1, "status": "Valid", "prefill_tok_s": 9927.1, "ttft_ms": 105620.8, "completed_requests": 1, "cached_tokens": 0}], "concurrent_cold_prefill": [{"context": "8K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 524160, "total_cached_tokens": 0, "cold_prefill_tok_s": 25171.5, "p50_cold_ttft_s": 12.15}, {"context": "16K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 1048448, "total_cached_tokens": 0, "cold_prefill_tok_s": 25896.8, "p50_cold_ttft_s": 23.18}, {"context": "32K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 2097024, "total_cached_tokens": 0, "cold_prefill_tok_s": 26214.2, "p50_cold_ttft_s": 45.43}, {"context": "64K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 4194176, "total_cached_tokens": 0, "cold_prefill_tok_s": 26427.4, "p50_cold_ttft_s": 89.72}, {"context": "128K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 8388480, "total_cached_tokens": 0, "cold_prefill_tok_s": 26403.6, "p50_cold_ttft_s": 178.94}, {"context": "256K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 16777088, "total_cached_tokens": 0, "cold_prefill_tok_s": 26315.7, "p50_cold_ttft_s": 358.58}, {"context": "512K", "batch_concurrency": 32, "ok_count": 32, "total_prompt_tokens": 16777152, "total_cached_tokens": 0, "cold_prefill_tok_s": 25818.6, "p50_cold_ttft_s": 405.78}, {"context": "512K", "batch_concurrency": 32, "ok_count": 32, "total_prompt_tokens": 16777152, "total_cached_tokens": 0, "cold_prefill_tok_s": 25808.9, "p50_cold_ttft_s": 405.6}, {"context": "1019K", "batch_concurrency": 16, "ok_count": 16, "total_prompt_tokens": 16695088, "total_cached_tokens": 0, "cold_prefill_tok_s": 25004.6, "p50_cold_ttft_s": 500.89}, {"context": "1019K", "batch_concurrency": 16, "ok_count": 16, "total_prompt_tokens": 16695088, "total_cached_tokens": 0, "cold_prefill_tok_s": 24990.6, "p50_cold_ttft_s": 498.93}, {"context": "256K", "batch_concurrency": 64, "ok_count": 64, "total_prompt_tokens": 16777216, "total_cached_tokens": 0, "cold_prefill_tok_s": 23837.2, "wall_s": 703.8}, {"context": "1019K", "batch_concurrency": 32, "ok_count": 32, "total_prompt_tokens": 33390240, "total_cached_tokens": 0, "cold_prefill_tok_s": 24105.0, "wall_s": 1385.2}], "sustained_decode": [{"context": "8K", "target_tokens": 8192, "concurrency": 1, "status": "Valid", "total_tok_s": 288.3, "sustained_overlap_tok_s": 288.3, "per_request_tok_s": 288.3, "ttft_ms": 169.6, "tbt_ms": 3.47, "cache_hit_pct": 96.9, "measured_for_s": 14.2, "completed_requests": 1}, {"context": "8K", "target_tokens": 8192, "concurrency": 2, "status": "Valid", "total_tok_s": 503.3, "sustained_overlap_tok_s": 512.1, "per_request_tok_s": 254.9, "ttft_ms": 307.4, "tbt_ms": 3.92, "cache_hit_pct": 96.9, "measured_for_s": 16.3, "completed_requests": 2}, {"context": "8K", "target_tokens": 8192, "concurrency": 4, "status": "Valid", "total_tok_s": 879.8, "sustained_overlap_tok_s": 916.7, "per_request_tok_s": 229.4, "ttft_ms": 325.6, "tbt_ms": 4.36, "cache_hit_pct": 96.9, "measured_for_s": 16.4, "completed_requests": 4}, {"context": "8K", "target_tokens": 8192, "concurrency": 8, "status": "Valid", "total_tok_s": 1419.0, "sustained_overlap_tok_s": 1612.1, "per_request_tok_s": 209.7, "ttft_ms": 497.2, "tbt_ms": 4.77, "cache_hit_pct": 96.9, "measured_for_s": 18.0, "completed_requests": 8}, {"context": "8K", "target_tokens": 8192, "concurrency": 16, "status": "Valid", "total_tok_s": 2270.9, "sustained_overlap_tok_s": 2576.5, "per_request_tok_s": 162.0, "ttft_ms": 563.6, "tbt_ms": 6.17, "cache_hit_pct": 96.9, "measured_for_s": 16.9, "completed_requests": 16}, {"context": "8K", "target_tokens": 8192, "concurrency": 32, "status": "Valid", "total_tok_s": 3535.0, "sustained_overlap_tok_s": 3993.1, "per_request_tok_s": 127.1, "ttft_ms": 758.8, "tbt_ms": 7.87, "cache_hit_pct": 96.9, "measured_for_s": 16.3, "completed_requests": 32}, {"context": "8K", "target_tokens": 8192, "concurrency": 64, "status": "Valid", "total_tok_s": 5120.2, "sustained_overlap_tok_s": 5866.3, "per_request_tok_s": 93.0, "ttft_ms": 1116.2, "tbt_ms": 10.76, "cache_hit_pct": 96.9, "measured_for_s": 20.0, "completed_requests": 64}, {"context": "16K", "target_tokens": 16384, "concurrency": 1, "status": "Valid", "total_tok_s": 231.3, "sustained_overlap_tok_s": 231.3, "per_request_tok_s": 231.2, "ttft_ms": 187.0, "tbt_ms": 4.33, "cache_hit_pct": 98.5, "measured_for_s": 17.7, "completed_requests": 1}, {"context": "16K", "target_tokens": 16384, "concurrency": 2, "status": "Valid", "total_tok_s": 491.4, "sustained_overlap_tok_s": 508.9, "per_request_tok_s": 256.3, "ttft_ms": 203.8, "tbt_ms": 3.91, "cache_hit_pct": 98.5, "measured_for_s": 16.7, "completed_requests": 2}, {"context": "16K", "target_tokens": 16384, "concurrency": 4, "status": "Valid", "total_tok_s": 753.5, "sustained_overlap_tok_s": 856.5, "per_request_tok_s": 226.6, "ttft_ms": 483.2, "tbt_ms": 4.41, "cache_hit_pct": 98.5, "measured_for_s": 19.1, "completed_requests": 4}, {"context": "16K", "target_tokens": 16384, "concurrency": 8, "status": "Valid", "total_tok_s": 1429.1, "sustained_overlap_tok_s": 1644.8, "per_request_tok_s": 214.2, "ttft_ms": 496.6, "tbt_ms": 4.67, "cache_hit_pct": 98.5, "measured_for_s": 17.9, "completed_requests": 8}, {"context": "16K", "target_tokens": 16384, "concurrency": 16, "status": "Valid", "total_tok_s": 2105.6, "sustained_overlap_tok_s": 2586.0, "per_request_tok_s": 170.3, "ttft_ms": 565.9, "tbt_ms": 5.87, "cache_hit_pct": 98.5, "measured_for_s": 18.2, "completed_requests": 16}, {"context": "16K", "target_tokens": 16384, "concurrency": 32, "status": "Valid", "total_tok_s": 3371.2, "sustained_overlap_tok_s": 3981.0, "per_request_tok_s": 131.0, "ttft_ms": 737.8, "tbt_ms": 7.63, "cache_hit_pct": 98.5, "measured_for_s": 17.1, "completed_requests": 32}, {"context": "16K", "target_tokens": 16384, "concurrency": 64, "status": "Valid", "total_tok_s": 4790.4, "sustained_overlap_tok_s": 5968.2, "per_request_tok_s": 98.6, "ttft_ms": 1127.2, "tbt_ms": 10.14, "cache_hit_pct": 98.5, "measured_for_s": 21.4, "completed_requests": 64}, {"context": "32K", "target_tokens": 32768, "concurrency": 1, "status": "Valid", "total_tok_s": 243.8, "sustained_overlap_tok_s": 243.8, "per_request_tok_s": 243.8, "ttft_ms": 224.6, "tbt_ms": 4.1, "cache_hit_pct": 99.2, "measured_for_s": 16.8, "completed_requests": 1}, {"context": "32K", "target_tokens": 32768, "concurrency": 2, "status": "Valid", "total_tok_s": 400.4, "sustained_overlap_tok_s": 453.0, "per_request_tok_s": 228.5, "ttft_ms": 368.0, "tbt_ms": 4.43, "cache_hit_pct": 99.2, "measured_for_s": 20.5, "completed_requests": 2}, {"context": "32K", "target_tokens": 32768, "concurrency": 4, "status": "Valid", "total_tok_s": 795.6, "sustained_overlap_tok_s": 850.1, "per_request_tok_s": 217.2, "ttft_ms": 508.8, "tbt_ms": 4.61, "cache_hit_pct": 99.2, "measured_for_s": 18.1, "completed_requests": 4}, {"context": "32K", "target_tokens": 32768, "concurrency": 8, "status": "Valid", "total_tok_s": 1580.2, "sustained_overlap_tok_s": 1651.2, "per_request_tok_s": 206.1, "ttft_ms": 500.8, "tbt_ms": 4.85, "cache_hit_pct": 99.2, "measured_for_s": 16.2, "completed_requests": 8}, {"context": "32K", "target_tokens": 32768, "concurrency": 16, "status": "Valid", "total_tok_s": 2206.5, "sustained_overlap_tok_s": 2422.4, "per_request_tok_s": 152.6, "ttft_ms": 584.9, "tbt_ms": 6.55, "cache_hit_pct": 99.2, "measured_for_s": 17.4, "completed_requests": 16}, {"context": "32K", "target_tokens": 32768, "concurrency": 32, "status": "Valid", "total_tok_s": 3310.7, "sustained_overlap_tok_s": 3815.3, "per_request_tok_s": 121.7, "ttft_ms": 751.8, "tbt_ms": 8.22, "cache_hit_pct": 99.2, "measured_for_s": 17.4, "completed_requests": 32}, {"context": "32K", "target_tokens": 32768, "concurrency": 64, "status": "Valid", "total_tok_s": 4902.9, "sustained_overlap_tok_s": 5591.7, "per_request_tok_s": 90.3, "ttft_ms": 1138.3, "tbt_ms": 11.08, "cache_hit_pct": 99.2, "measured_for_s": 20.9, "completed_requests": 64}, {"context": "64K", "target_tokens": 65536, "concurrency": 1, "status": "Valid", "total_tok_s": 253.2, "sustained_overlap_tok_s": 253.2, "per_request_tok_s": 253.2, "ttft_ms": 258.5, "tbt_ms": 3.95, "cache_hit_pct": 99.6, "measured_for_s": 16.2, "completed_requests": 1}, {"context": "64K", "target_tokens": 65536, "concurrency": 2, "status": "Valid", "total_tok_s": 440.1, "sustained_overlap_tok_s": 446.2, "per_request_tok_s": 222.0, "ttft_ms": 403.9, "tbt_ms": 4.5, "cache_hit_pct": 99.6, "measured_for_s": 18.6, "completed_requests": 2}, {"context": "64K", "target_tokens": 65536, "concurrency": 4, "status": "Valid", "total_tok_s": 736.3, "sustained_overlap_tok_s": 762.1, "per_request_tok_s": 191.2, "ttft_ms": 538.1, "tbt_ms": 5.23, "cache_hit_pct": 99.6, "measured_for_s": 19.6, "completed_requests": 4}, {"context": "64K", "target_tokens": 65536, "concurrency": 8, "status": "Valid", "total_tok_s": 1274.1, "sustained_overlap_tok_s": 1400.0, "per_request_tok_s": 175.8, "ttft_ms": 545.5, "tbt_ms": 5.69, "cache_hit_pct": 99.6, "measured_for_s": 20.1, "completed_requests": 8}, {"context": "64K", "target_tokens": 65536, "concurrency": 16, "status": "Valid", "total_tok_s": 2064.1, "sustained_overlap_tok_s": 2276.1, "per_request_tok_s": 144.1, "ttft_ms": 624.9, "tbt_ms": 6.94, "cache_hit_pct": 99.6, "measured_for_s": 18.6, "completed_requests": 16}, {"context": "64K", "target_tokens": 65536, "concurrency": 32, "status": "Valid", "total_tok_s": 3073.4, "sustained_overlap_tok_s": 3338.6, "per_request_tok_s": 104.4, "ttft_ms": 789.8, "tbt_ms": 9.58, "cache_hit_pct": 99.6, "measured_for_s": 18.7, "completed_requests": 32}, {"context": "64K", "target_tokens": 65536, "concurrency": 64, "status": "Valid", "total_tok_s": 4401.8, "sustained_overlap_tok_s": 4986.5, "per_request_tok_s": 78.7, "ttft_ms": 1312.2, "tbt_ms": 12.71, "cache_hit_pct": 99.6, "measured_for_s": 23.3, "completed_requests": 64}, {"context": "128K", "target_tokens": 131072, "concurrency": 1, "status": "Valid", "total_tok_s": 246.3, "sustained_overlap_tok_s": 246.3, "per_request_tok_s": 246.2, "ttft_ms": 326.7, "tbt_ms": 4.06, "cache_hit_pct": 99.8, "measured_for_s": 16.6, "completed_requests": 1}, {"context": "128K", "target_tokens": 131072, "concurrency": 2, "status": "Valid", "total_tok_s": 420.5, "sustained_overlap_tok_s": 440.0, "per_request_tok_s": 221.3, "ttft_ms": 491.4, "tbt_ms": 4.52, "cache_hit_pct": 99.8, "measured_for_s": 19.5, "completed_requests": 2}, {"context": "128K", "target_tokens": 131072, "concurrency": 4, "status": "Valid", "total_tok_s": 749.2, "sustained_overlap_tok_s": 787.8, "per_request_tok_s": 197.4, "ttft_ms": 645.6, "tbt_ms": 5.07, "cache_hit_pct": 99.8, "measured_for_s": 19.2, "completed_requests": 4}, {"context": "128K", "target_tokens": 131072, "concurrency": 8, "status": "Valid", "total_tok_s": 1352.3, "sustained_overlap_tok_s": 1462.5, "per_request_tok_s": 182.3, "ttft_ms": 648.3, "tbt_ms": 5.48, "cache_hit_pct": 99.8, "measured_for_s": 18.9, "completed_requests": 8}, {"context": "128K", "target_tokens": 131072, "concurrency": 16, "status": "Valid", "total_tok_s": 1967.4, "sustained_overlap_tok_s": 2292.1, "per_request_tok_s": 140.7, "ttft_ms": 701.4, "tbt_ms": 7.11, "cache_hit_pct": 99.8, "measured_for_s": 19.5, "completed_requests": 16}, {"context": "128K", "target_tokens": 131072, "concurrency": 32, "status": "Valid", "total_tok_s": 3117.3, "sustained_overlap_tok_s": 3363.7, "per_request_tok_s": 105.2, "ttft_ms": 842.0, "tbt_ms": 9.5, "cache_hit_pct": 99.8, "measured_for_s": 18.5, "completed_requests": 32}, {"context": "128K", "target_tokens": 131072, "concurrency": 64, "status": "Valid", "total_tok_s": 4557.4, "sustained_overlap_tok_s": 5037.6, "per_request_tok_s": 78.9, "ttft_ms": 1078.2, "tbt_ms": 12.67, "cache_hit_pct": 99.8, "measured_for_s": 22.5, "completed_requests": 64}, {"context": "256K", "target_tokens": 262144, "concurrency": 1, "status": "Valid", "total_tok_s": 230.4, "sustained_overlap_tok_s": 230.4, "per_request_tok_s": 230.4, "ttft_ms": 497.0, "tbt_ms": 4.34, "cache_hit_pct": 99.9, "measured_for_s": 17.8, "completed_requests": 1}, {"context": "256K", "target_tokens": 262144, "concurrency": 2, "status": "Valid", "total_tok_s": 414.0, "sustained_overlap_tok_s": 420.9, "per_request_tok_s": 209.7, "ttft_ms": 728.6, "tbt_ms": 4.77, "cache_hit_pct": 99.9, "measured_for_s": 19.8, "completed_requests": 2}, {"context": "256K", "target_tokens": 262144, "concurrency": 4, "status": "Valid", "total_tok_s": 704.0, "sustained_overlap_tok_s": 744.6, "per_request_tok_s": 188.7, "ttft_ms": 942.4, "tbt_ms": 5.3, "cache_hit_pct": 99.9, "measured_for_s": 20.5, "completed_requests": 4}, {"context": "256K", "target_tokens": 262144, "concurrency": 8, "status": "Valid", "total_tok_s": 1260.6, "sustained_overlap_tok_s": 1327.8, "per_request_tok_s": 166.0, "ttft_ms": 829.4, "tbt_ms": 6.03, "cache_hit_pct": 99.9, "measured_for_s": 20.3, "completed_requests": 8}, {"context": "256K", "target_tokens": 262144, "concurrency": 16, "status": "Valid", "total_tok_s": 1956.7, "sustained_overlap_tok_s": 2164.1, "per_request_tok_s": 134.3, "ttft_ms": 904.8, "tbt_ms": 7.45, "cache_hit_pct": 99.9, "measured_for_s": 19.6, "completed_requests": 16}, {"context": "256K", "target_tokens": 262144, "concurrency": 32, "status": "Valid", "total_tok_s": 2738.6, "sustained_overlap_tok_s": 3028.6, "per_request_tok_s": 96.6, "ttft_ms": 1158.8, "tbt_ms": 10.35, "cache_hit_pct": 99.9, "measured_for_s": 21.0, "completed_requests": 32}, {"context": "256K", "target_tokens": 262144, "concurrency": 64, "status": "Requests queued", "total_tok_s": 1395.2, "sustained_overlap_tok_s": 1395.2, "per_request_tok_s": 38.2, "wave_avg_per_req_tok_s": 21.8, "ttft_ms": 86808.3, "tbt_ms": 26.16, "cache_hit_pct": 85.8, "active_kv_tokens": 16982016, "measured_for_s": 146.7, "completed_requests": 64, "note": "Exceeds 2.09M tok/GPU FP4-indexer single-wave cap; SGLang safely queued waves with 0 OOM (where vLLM 96GBx8 failed Over capacity)."}, {"context": "512K", "target_tokens": 524288, "concurrency": 1, "status": "Valid", "total_tok_s": 222.4, "sustained_overlap_tok_s": 222.4, "per_request_tok_s": 222.3, "ttft_ms": 1005.6, "tbt_ms": 4.5, "cache_hit_pct": 100.0, "measured_for_s": 18.4, "completed_requests": 1}, {"context": "512K", "target_tokens": 524288, "concurrency": 2, "status": "Valid", "total_tok_s": 410.6, "sustained_overlap_tok_s": 420.4, "per_request_tok_s": 209.0, "ttft_ms": 1228.1, "tbt_ms": 4.79, "cache_hit_pct": 100.0, "measured_for_s": 20.0, "completed_requests": 2}, {"context": "512K", "target_tokens": 524288, "concurrency": 4, "status": "Valid", "total_tok_s": 711.1, "sustained_overlap_tok_s": 759.4, "per_request_tok_s": 187.2, "ttft_ms": 1366.5, "tbt_ms": 5.34, "cache_hit_pct": 100.0, "measured_for_s": 20.3, "completed_requests": 4}, {"context": "512K", "target_tokens": 524288, "concurrency": 8, "status": "Valid", "total_tok_s": 1242.8, "sustained_overlap_tok_s": 1328.8, "per_request_tok_s": 165.1, "ttft_ms": 1350.0, "tbt_ms": 6.06, "cache_hit_pct": 100.0, "measured_for_s": 20.6, "completed_requests": 8}, {"context": "512K", "target_tokens": 524288, "concurrency": 16, "status": "Valid", "total_tok_s": 1742.6, "sustained_overlap_tok_s": 2057.4, "per_request_tok_s": 128.9, "ttft_ms": 1432.3, "tbt_ms": 7.76, "cache_hit_pct": 100.0, "measured_for_s": 22.0, "completed_requests": 16}, {"context": "512K", "target_tokens": 524288, "concurrency": 32, "status": "Valid", "total_tok_s": 2470.6, "sustained_overlap_tok_s": 2866.0, "per_request_tok_s": 87.6, "ttft_ms": 1674.1, "tbt_ms": 11.41, "cache_hit_pct": 100.0, "measured_for_s": 23.3, "completed_requests": 32}, {"context": "512K", "target_tokens": 524288, "concurrency": 64, "status": "Requests queued", "total_tok_s": 2476.8, "sustained_overlap_tok_s": 2476.8, "per_request_tok_s": 77.4, "ttft_ms": 673927.1, "tbt_ms": 12.92, "cache_hit_pct": 50.0, "measured_for_s": 533.7, "completed_requests": 64, "e2e_with_cold_wave_tok_s": 191.9, "note": "64/64 completed (0 OOM) in 2x32 waves under 2.09M/GPU FP4-indexer cap; active wave decode 2,476.8 tok/s (per-req 77.4 tok/s, TBT 12.92ms); e2e incl. wave2 cold prefill 191.9 tok/s."}, {"context": "1019K", "target_tokens": 1043456, "concurrency": 1, "status": "Valid", "total_tok_s": 174.8, "sustained_overlap_tok_s": 174.8, "per_request_tok_s": 174.7, "ttft_ms": 2196.0, "tbt_ms": 5.72, "cache_hit_pct": 100.0, "measured_for_s": 23.4, "completed_requests": 1}, {"context": "1019K", "target_tokens": 1043456, "concurrency": 2, "status": "Valid", "total_tok_s": 360.4, "sustained_overlap_tok_s": 372.8, "per_request_tok_s": 183.7, "ttft_ms": 2379.8, "tbt_ms": 5.45, "cache_hit_pct": 100.0, "measured_for_s": 22.7, "completed_requests": 2}, {"context": "1019K", "target_tokens": 1043456, "concurrency": 4, "status": "Valid", "total_tok_s": 641.3, "sustained_overlap_tok_s": 708.4, "per_request_tok_s": 173.6, "ttft_ms": 2593.2, "tbt_ms": 5.77, "cache_hit_pct": 100.0, "measured_for_s": 22.5, "completed_requests": 4}, {"context": "1019K", "target_tokens": 1043456, "concurrency": 8, "status": "Valid", "total_tok_s": 1009.4, "sustained_overlap_tok_s": 1255.8, "per_request_tok_s": 151.1, "ttft_ms": 2676.8, "tbt_ms": 6.62, "cache_hit_pct": 100.0, "measured_for_s": 25.4, "completed_requests": 8}, {"context": "1019K", "target_tokens": 1043456, "concurrency": 16, "status": "Valid", "total_tok_s": 1474.4, "sustained_overlap_tok_s": 1888.9, "per_request_tok_s": 107.1, "ttft_ms": 3274.8, "tbt_ms": 9.34, "cache_hit_pct": 100.0, "measured_for_s": 26.0, "completed_requests": 16}, {"context": "1019K", "target_tokens": 1043456, "concurrency": 32, "status": "Requests queued", "total_tok_s": 1124.8, "sustained_overlap_tok_s": 1124.8, "per_request_tok_s": 70.3, "wave_avg_per_req_tok_s": 24.5, "ttft_ms": 686404.4, "tbt_ms": 14.22, "cache_hit_pct": 50.0, "active_kv_tokens": 33492640, "measured_for_s": 130.9, "completed_requests": 32, "note": "32/32 completed (0 OOM) in 2x16 waves under 2.09M/GPU FP4-indexer cap; active wave decode 1,124.8 tok/s (per-req 70.3 tok/s, TBT 14.22ms), continuous wave output 784.0 tok/s.", "wave_sustained_tok_s": 784.0}], "gpu_telemetry": {"global_min_free_gib": 1.949, "zero_oom": true, "zero_failed_requests": true}, "status": "completed"}, "ref": {"source_url": "https://www.localmaxxing.com/es/inference-benchmarks/cmw41hn3g0c5goa01z8a4ylt4", "title": "DeepSeek-V4.1-Flash-1017 on RTX PRO 6000 Blackwell Server Edition 768GB x8", "author": "@alvarobartt", "engine": "vLLM 0.32.0 (TP8 + EP, MXFP4+FP8, DSpark draft=5, mem=0.95)", "hardware": "8 x RTX PRO 6000 Blackwell 96GB (768 GB VRAM) + Xeon Platinum 8559C + 2000 GB RAM", "measured_at": "2026-11-05T19:53:00Z", "prefill_single": {"8K": {"tok_s": 14300.0, "ttft_ms": 574}, "16K": {"tok_s": 15400.0, "ttft_ms": 1055}, "32K": {"tok_s": 15900.0, "ttft_ms": 2035}, "64K": {"tok_s": 15900.0, "ttft_ms": 4051}, "128K": {"tok_s": 15600.0, "ttft_ms": 8251}, "256K": {"tok_s": 15100.0, "ttft_ms": 17065}, "512K": {"tok_s": 14000.0, "ttft_ms": 36755}, "1019K": {"tok_s": 12300.0, "ttft_ms": 82981}, "1,048,512": {"tok_s": 12300.0, "ttft_ms": 83212}}, "sustained_decode": {"8K": {"1": {"status": "Valid", "total_tok_s": 281.0, "per_req_tok_s": 278.9, "ttft_ms": 74, "tbt_ms": 3.6}, "2": {"status": "Valid", "total_tok_s": 486.4, "per_req_tok_s": 238.3, "ttft_ms": 92, "tbt_ms": 4.2}, "4": {"status": "Valid", "total_tok_s": 751.6, "per_req_tok_s": 186.1, "ttft_ms": 92, "tbt_ms": 5.4}, "8": {"status": "Valid", "total_tok_s": 1035.6, "per_req_tok_s": 130.9, "ttft_ms": 115, "tbt_ms": 7.6}, "16": {"status": "Valid", "total_tok_s": 1353.6, "per_req_tok_s": 84.2, "ttft_ms": 507, "tbt_ms": 11.9}, "32": {"status": "Valid", "total_tok_s": 1901.1, "per_req_tok_s": 59.8, "ttft_ms": 878, "tbt_ms": 16.7}, "64": {"status": "Valid", "total_tok_s": 2863.7, "per_req_tok_s": 44.6, "ttft_ms": 1170, "tbt_ms": 22.4}, "128": {"status": "Valid", "total_tok_s": 4156.3, "per_req_tok_s": 31.1, "ttft_ms": 1961, "tbt_ms": 32.2}}, "16K": {"1": {"status": "Valid", "total_tok_s": 274.8, "per_req_tok_s": 277.9, "ttft_ms": 89, "tbt_ms": 3.6}, "2": {"status": "Valid", "total_tok_s": 474.7, "per_req_tok_s": 234.5, "ttft_ms": 99, "tbt_ms": 4.3}, "4": {"status": "Valid", "total_tok_s": 739.5, "per_req_tok_s": 183.5, "ttft_ms": 99, "tbt_ms": 5.5}, "8": {"status": "Valid", "total_tok_s": 1026.1, "per_req_tok_s": 127.3, "ttft_ms": 108, "tbt_ms": 7.9}, "16": {"status": "Valid", "total_tok_s": 1339.7, "per_req_tok_s": 84.4, "ttft_ms": 425, "tbt_ms": 11.8}, "32": {"status": "Valid", "total_tok_s": 1882.7, "per_req_tok_s": 58.4, "ttft_ms": 657, "tbt_ms": 17.1}, "64": {"status": "Valid", "total_tok_s": 2811.5, "per_req_tok_s": 44.3, "ttft_ms": 1156, "tbt_ms": 22.6}, "128": {"status": "Valid", "total_tok_s": 4048.0, "per_req_tok_s": 31.3, "ttft_ms": 2171, "tbt_ms": 31.9}}, "32K": {"1": {"status": "Valid", "total_tok_s": 268.1, "per_req_tok_s": 270.5, "ttft_ms": 132, "tbt_ms": 3.7}, "2": {"status": "Valid", "total_tok_s": 469.5, "per_req_tok_s": 244.0, "ttft_ms": 148, "tbt_ms": 4.1}, "4": {"status": "Valid", "total_tok_s": 713.3, "per_req_tok_s": 178.9, "ttft_ms": 163, "tbt_ms": 5.6}, "8": {"status": "Valid", "total_tok_s": 1011.8, "per_req_tok_s": 125.2, "ttft_ms": 180, "tbt_ms": 8.0}, "16": {"status": "Valid", "total_tok_s": 1307.2, "per_req_tok_s": 82.3, "ttft_ms": 576, "tbt_ms": 12.1}, "32": {"status": "Valid", "total_tok_s": 1819.4, "per_req_tok_s": 56.9, "ttft_ms": 1042, "tbt_ms": 17.6}, "64": {"status": "Valid", "total_tok_s": 2598.1, "per_req_tok_s": 41.2, "ttft_ms": 2018, "tbt_ms": 24.2}, "128": {"status": "Valid", "total_tok_s": 3807.2, "per_req_tok_s": 29.9, "ttft_ms": 3758, "tbt_ms": 33.4}}, "64K": {"1": {"status": "Valid", "total_tok_s": 266.8, "per_req_tok_s": 272.0, "ttft_ms": 210, "tbt_ms": 3.7}, "2": {"status": "Valid", "total_tok_s": 461.5, "per_req_tok_s": 230.2, "ttft_ms": 226, "tbt_ms": 4.3}, "4": {"status": "Valid", "total_tok_s": 723.5, "per_req_tok_s": 182.1, "ttft_ms": 229, "tbt_ms": 5.5}, "8": {"status": "Valid", "total_tok_s": 1001.8, "per_req_tok_s": 125.2, "ttft_ms": 263, "tbt_ms": 8.0}, "16": {"status": "Valid", "total_tok_s": 1307.7, "per_req_tok_s": 81.3, "ttft_ms": 998, "tbt_ms": 12.3}, "32": {"status": "Valid", "total_tok_s": 1806.3, "per_req_tok_s": 57.1, "ttft_ms": 1948, "tbt_ms": 17.5}, "64": {"status": "Valid", "total_tok_s": 2533.5, "per_req_tok_s": 40.4, "ttft_ms": 3648, "tbt_ms": 24.7}, "128": {"status": "Valid", "total_tok_s": 3661.4, "per_req_tok_s": 29.3, "ttft_ms": 7155, "tbt_ms": 34.2}}, "128K": {"1": {"status": "Valid", "total_tok_s": 266.0, "per_req_tok_s": 268.0, "ttft_ms": 376, "tbt_ms": 3.7}, "2": {"status": "Valid", "total_tok_s": 448.3, "per_req_tok_s": 229.6, "ttft_ms": 427, "tbt_ms": 4.4}, "4": {"status": "Valid", "total_tok_s": 688.0, "per_req_tok_s": 173.8, "ttft_ms": 392, "tbt_ms": 5.8}, "8": {"status": "Valid", "total_tok_s": 985.8, "per_req_tok_s": 126.1, "ttft_ms": 594, "tbt_ms": 7.9}, "16": {"status": "Valid", "total_tok_s": 1256.5, "per_req_tok_s": 79.8, "ttft_ms": 2055, "tbt_ms": 12.5}, "32": {"status": "Valid", "total_tok_s": 1751.1, "per_req_tok_s": 56.0, "ttft_ms": 3812, "tbt_ms": 17.9}, "64": {"status": "Valid", "total_tok_s": 2405.1, "per_req_tok_s": 38.9, "ttft_ms": 7266, "tbt_ms": 25.7}, "128": {"status": "Valid", "total_tok_s": 3509.4, "per_req_tok_s": 28.8, "ttft_ms": 14852, "tbt_ms": 34.7}}, "256K": {"1": {"status": "Valid", "total_tok_s": 260.0, "per_req_tok_s": 285.5, "ttft_ms": 697, "tbt_ms": 3.5}, "2": {"status": "Valid", "total_tok_s": 431.0, "per_req_tok_s": 220.3, "ttft_ms": 799, "tbt_ms": 4.5}, "4": {"status": "Valid", "total_tok_s": 673.2, "per_req_tok_s": 172.8, "ttft_ms": 1080, "tbt_ms": 5.8}, "8": {"status": "Valid", "total_tok_s": 944.1, "per_req_tok_s": 119.3, "ttft_ms": 1413, "tbt_ms": 8.4}, "16": {"status": "Valid", "total_tok_s": 1209.2, "per_req_tok_s": 76.9, "ttft_ms": 4151, "tbt_ms": 13.0}, "32": {"status": "Valid", "total_tok_s": 1674.4, "per_req_tok_s": 53.2, "ttft_ms": 8277, "tbt_ms": 18.8}, "64": {"status": "Valid", "total_tok_s": 2324.6, "per_req_tok_s": 37.4, "ttft_ms": 15957, "tbt_ms": 26.8}, "128": {"status": "Over capacity", "total_tok_s": null, "per_req_tok_s": null, "ttft_ms": null, "tbt_ms": null}}, "512K": {"1": {"status": "Valid", "total_tok_s": 257.8, "per_req_tok_s": 270.4, "ttft_ms": 1463, "tbt_ms": 3.7}, "2": {"status": "Valid", "total_tok_s": 416.8, "per_req_tok_s": 219.4, "ttft_ms": 1576, "tbt_ms": 4.6}, "4": {"status": "Valid", "total_tok_s": 639.2, "per_req_tok_s": 168.7, "ttft_ms": 2125, "tbt_ms": 5.9}, "8": {"status": "Valid", "total_tok_s": 896.0, "per_req_tok_s": 117.2, "ttft_ms": 3168, "tbt_ms": 8.5}, "16": {"status": "Valid", "total_tok_s": 1151.9, "per_req_tok_s": 73.2, "ttft_ms": 8163, "tbt_ms": 13.7}, "32": {"status": "Valid", "total_tok_s": 1556.8, "per_req_tok_s": 49.4, "ttft_ms": 18419, "tbt_ms": 20.2}, "64": {"status": "Over capacity", "total_tok_s": null, "per_req_tok_s": null, "ttft_ms": null, "tbt_ms": null}, "128": {"status": "Over capacity", "total_tok_s": null, "per_req_tok_s": null, "ttft_ms": null, "tbt_ms": null}}, "1019K": {"1": {"status": "Valid", "total_tok_s": 222.5, "per_req_tok_s": 249.0, "ttft_ms": 3059, "tbt_ms": 4.0}, "2": {"status": "Requests queued", "total_tok_s": 398.3, "per_req_tok_s": 219.5, "ttft_ms": 3142, "tbt_ms": 4.6}, "4": {"status": "Requests queued", "total_tok_s": 545.5, "per_req_tok_s": 160.3, "ttft_ms": 4018, "tbt_ms": 6.2}, "8": {"status": "Requests queued", "total_tok_s": 799.7, "per_req_tok_s": 108.4, "ttft_ms": 7261, "tbt_ms": 9.2}, "16": {"status": "Valid", "total_tok_s": 1027.7, "per_req_tok_s": 66.4, "ttft_ms": 14557, "tbt_ms": 15.1}, "32": {"status": "Over capacity", "total_tok_s": null, "per_req_tok_s": null, "ttft_ms": null, "tbt_ms": null}, "64": {"status": "Over capacity", "total_tok_s": null, "per_req_tok_s": null, "ttft_ms": null, "tbt_ms": null}, "128": {"status": "Over capacity", "total_tok_s": null, "per_req_tok_s": null, "ttft_ms": null, "tbt_ms": null}}}}};
+const CTXS = ["8K", "16K", "32K", "64K", "128K", "256K", "512K", "1019K"];
+const CONCS = [1, 2, 4, 8, 16, 32, 64];
+const PCTXS = ["8K", "16K", "32K", "64K", "128K", "256K", "512K", "1019K", "1,048,512"];
+
+const decMap = {};
+(RAW.tf500.sustained_decode || []).forEach(r => {
+  const s = r.status || "";
+  if (s.startsWith("Valid") || s === "Requests queued") decMap[r.context + "_" + r.concurrency] = r;
+});
+const p1Map = {};
+(RAW.tf500.prefill_single || []).forEach(r => {
+  if (r.status === "Valid") p1Map[r.context] = r;
+});
+const pcMap = {};
+(RAW.tf500.concurrent_cold_prefill || []).forEach(r => {
+  pcMap[r.context] = Math.max(pcMap[r.context] || 0, r.cold_prefill_tok_s || 0);
+});
+
+function fmt(n, d=1) {
+  return n == null ? "—" : Number(n).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+}
+
+function renderKpis() {
+  let gains64 = [];
+  CTXS.forEach(ctx => {
+    const o = decMap[ctx + "_64"];
+    const t = ((RAW.ref.sustained_decode || {})[ctx] || {})["64"];
+    if (o && t && t.total_tok_s) gains64.push(100 * (o.total_tok_s - t.total_tok_s) / t.total_tok_s);
+  });
+  const maxG = gains64.length ? Math.max(...gains64) : 0;
+  const avgG = gains64.length ? gains64.reduce((a,b)=>a+b,0)/gains64.length : 0;
+  const maxPre = Math.max(26478.5, ...Object.values(pcMap));
+  const d512 = (decMap["512K_64"] || {}).total_tok_s;
+  const d1019 = (decMap["1019K_64"] || decMap["1019K_32"] || {}).total_tok_s;
+
+  const cards = [
+    ["全局主 KV 缓存容量", "113.57M tok", "少 99GB 显存，容量反超 96GB×8 (~18M) 达 6.3 倍", "#0284c7"],
+    ["64 并发独立 Decode 同口径优势", "+" + maxG.toFixed(1) + "% 峰值", "8K–256K 同口径 64 并发平均领先 +" + avgG.toFixed(1) + "%", "#059669"],
+    ["高并发冷 Prefill 峰值", fmt(maxPre, 0) + " tok/s", "8 个 DP 填满后高出原榜单 15.9K 上限 +66.5%", "#d97706"],
+    ["击穿 96GB×8 爆池禁区", (d512 ? fmt(d512,0) : "—") + " / " + (d1019 ? fmt(d1019,0) : "—") + " tok/s", "512K×64 与 1019K×64 原榜单均 Over capacity 拒跑", "#7c3aed"]
+  ];
+  document.getElementById("kpi-row").innerHTML = cards.map(c => `
+    <div class="kpi">
+      <div class="kpi-lbl">${c[0]}</div>
+      <div class="kpi-val" style="color:${c[3]}">${c[1]}</div>
+      <div class="kpi-sub">${c[2]}</div>
+    </div>
+  `).join("");
+}
+
+function setMode(mode, btn) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  const el = document.getElementById("main-view");
+  if (mode === "table") {
+    let rowsHtml = "";
+    CTXS.forEach(ctx => {
+      CONCS.forEach(c => {
+        const o = decMap[ctx + "_" + c];
+        const t = ((RAW.ref.sustained_decode || {})[ctx] || {})[String(c)] || {};
+        let deltaStr = "—";
+        if (o && t.status === "Over capacity") deltaStr = '<span class="pill purple">★ 破爆池</span>';
+        else if (o && t.total_tok_s) {
+          const d = 100 * (o.total_tok_s - t.total_tok_s) / t.total_tok_s;
+          const cls = d >= 3 ? "green" : (d <= -5 ? "amber" : "neutral");
+          deltaStr = `<span class="pill ${cls}">${d >= 0 ? "+" : ""}${d.toFixed(1)}%</span>`;
+        }
+        rowsHtml += `<tr>
+          <td><b>${ctx}</b></td>
+          <td>${c}</td>
+          <td><b>${o ? fmt(o.total_tok_s) : "—"}</b></td>
+          <td>${t.total_tok_s ? fmt(t.total_tok_s) : (t.status || "—")}</td>
+          <td>${deltaStr}</td>
+          <td>${o ? fmt(o.per_request_tok_s) : "—"} / ${t.per_req_tok_s ? fmt(t.per_req_tok_s) : "—"}</td>
+          <td>${o ? fmt(o.tbt_ms) + " ms" : "—"} / ${t.tbt_ms ? fmt(t.tbt_ms) + " ms" : "—"}</td>
+          <td>${o ? fmt(o.cache_hit_pct) + "%" : "—"}</td>
+        </tr>`;
+      });
+    });
+    el.innerHTML = `<table class="tbl-all">
+      <thead><tr><th>上下文</th><th>并发</th><th>TF500 Total tok/s</th><th>96GB×8 Total tok/s</th><th>对比结论</th><th>单路 tok/s (我/彼)</th><th>TBT 延迟 (我/彼)</th><th>KV 命中率</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+    return;
+  }
+
+  let html = `<table class="matrix-grid"><thead><tr><th>Context \ Conc</th>` +
+    CONCS.map(c => `<th>${c} ${c===1?'req':'reqs'}</th>`).join("") + `</tr></thead><tbody>`;
+  CTXS.forEach(ctx => {
+    const cp = pcMap[ctx] ? `<div class="m-sub">冷P ${(pcMap[ctx]/1000).toFixed(1)}K/s</div>` : "";
+    html += `<tr><td class="ctx-cell">${ctx}${cp}</td>`;
+    CONCS.forEach(c => {
+      const o = decMap[ctx + "_" + c];
+      const t = ((RAW.ref.sustained_decode || {})[ctx] || {})[String(c)] || {};
+      if (mode === "ref") {
+        if (t.status === "Over capacity") {
+          html += `<td class="mcell behind"><div class="m-main" style="color:#b45309">Over capacity</div><div class="m-sub">KV 爆池拒跑</div></td>`;
+        } else {
+          html += `<td class="mcell"><div class="m-main">${fmt(t.total_tok_s)}</div><div class="m-sub">${fmt(t.per_req_tok_s)}/s · ${t.tbt_ms}ms</div><span class="pill neutral">${t.status}</span></td>`;
+        }
+        return;
+      }
+      if (!o) {
+        html += `<td class="mcell"><div class="m-sub">Pending...</div></td>`;
+        return;
+      }
+      let cls = "";
+      let pill = `<span class="pill neutral">TTFT ${fmt(o.ttft_ms,0)}ms</span>`;
+      if (mode === "vs") {
+        if (t.status === "Over capacity") {
+          cls = "overcap";
+          pill = `<span class="pill purple">★ 破爆池 (对方拒跑)</span>`;
+        } else if (t.total_tok_s) {
+          const d = 100 * (o.total_tok_s - t.total_tok_s) / t.total_tok_s;
+          cls = d >= 25 ? "win-strong" : (d >= 3 ? "win-mid" : (d <= -5 ? "behind" : ""));
+          const pcls = d >= 3 ? "green" : (d <= -5 ? "amber" : "neutral");
+          const q = t.status === "Requests queued" ? " · 彼排队" : "";
+          pill = `<span class="pill ${pcls}">${d>=0?"+":""}${d.toFixed(1)}% vs ${fmt(t.total_tok_s,0)}${q}</span>`;
+        }
+      } else {
+        cls = o.total_tok_s >= 3000 ? "win-strong" : (o.total_tok_s >= 1500 ? "win-mid" : "");
+      }
+      html += `<td class="mcell ${cls}">
+        <div class="m-main">${fmt(o.total_tok_s)} <span style="font-size:12px;font-weight:600">tok/s</span></div>
+        <div class="m-sub">${fmt(o.per_request_tok_s)}/req · TBT ${fmt(o.tbt_ms)}ms</div>
+        ${pill}
+      </td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
+  el.innerHTML = html;
+}
+
+function renderPrefill() {
+  document.getElementById("prefill-view").innerHTML = PCTXS.map(ctx => {
+    const o = p1Map[ctx];
+    const r = (RAW.ref.prefill_single || {})[ctx] || {};
+    const pc = pcMap[ctx];
+    return `<div class="pbox">
+      <div style="font-weight:800;font-size:15px;margin-bottom:6px;">${ctx}</div>
+      <div class="m-sub">TF500 单发 (c=1)</div>
+      <div style="font-weight:800;font-size:16px;">${o ? (o.prefill_tok_s/1000).toFixed(2)+"K/s" : "—"}</div>
+      <div class="m-sub">${o ? (o.ttft_ms/1000).toFixed(2)+"s TTFT" : ""}</div>
+      <div class="m-sub" style="margin-top:6px;">96GB×8 单发: ${r.tok_s ? (r.tok_s/1000).toFixed(1)+"K/s" : "—"}</div>
+      ${pc ? `<div class="pill green" style="margin-top:8px;">并发冷读 ${(pc/1000).toFixed(2)}K/s</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+renderKpis();
+setMode("vs", document.querySelector(".tab-btn"));
+renderPrefill();
+</script>
+</body>
+</html>

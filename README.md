@@ -61,7 +61,7 @@
 
 ---
 
-## 三、全阶段演进与实测报告归档总表（01–09）
+## 三、全阶段演进与实测报告归档总表（01–11）
 
 | 阶段与报告入口 | GitHub 里程碑 / 配置要点 | 单发 32K 冷 P (`tok/s`) | 64 路冷 P (`tok/s`) | 64 路缓存 / 短提示 D (`tok/s`) | 关键结论 |
 |---|---|---:|---:|---:|---|
@@ -74,6 +74,9 @@
 | **07. Step 3 双引擎算子与自适应分块**<br>[`07-tp8-step3-双引擎深度优化报告.md`](bench/reports/07-tp8-step3-双引擎深度优化报告.md)<br>[`sd-popt4-analysis.json`](bench/reports/data/sd-popt4-analysis.json) | 里程碑 #3：`wo_a MAX_T=56` + 尾层深度守卫激活单发 `16K` 续块 + `CHUNK=49152` | **`10,886`（`4.70×`，TTFT `3.01s`）** | 32K：**`26,106` (`+27.1%`)**<br>128K：**`26,129` (`+26.5%`)** | 32K：`4,672`（窗口 `4,746`）<br>128K 纯 D：`3,706`–`3,800`<br>短提示：**`3,252`** | Decode `_dequant_kernel` 清零（`wo_a` 耗时 `-49%`）；`2×300K` TTFT 缩至 **`78.4s`** |
 | **08. Step 4 全形状 MXFP8 表与显存加固**<br>[`08-tp8-step4-mxfp8-全形状调优报告.md`](bench/reports/08-tp8-step4-mxfp8-全形状调优报告.md)<br>[`sd-popt5-analysis.json`](bench/reports/data/sd-popt5-analysis.json) | 里程碑 #4：10 形状 MXFP8 最优表 + 草稿 `MXMMA e3m4` + DP8 `sps_profile` 修复 + `CHUNK=40960` | **`10,580`**（`4.57×`） | 32K：`25,548`<br>128K：`25,756` | 短提示：**`3,285.5`（窗口 `3,318.6`）**<br>32K P50 TPOT：**`9.245 ms`**<br>128K：**`49.75 ms/步`** | 含 8 卡 CUPTI Profiler 全程最低空闲 **`2.135 GiB`**，PPL **`2.0678`**（同 `p0`） |
 | **09. Step 5 DP8 原生 SPS 表巅峰融合**<br>[`09-tp8-step5-dp8-sps-巅峰融合报告.md`](bench/reports/09-tp8-step5-dp8-sps-巅峰融合报告.md)<br>[`sd-popt6-analysis.json`](bench/reports/data/sd-popt6-analysis.json) | 里程碑 #5：实测 `86kd-sps-6000d-dp8.json`（30 轮 `match=1.0`）+ `CHUNK=49152` | **`10,674`**（`4.61×`） | 32K：**`26,042` (`+26.8%`)**<br>128K：**`26,478.5` (`+28.2%`)** | 32K：**`4,862.6`（窗口 `4,967.2`，`+15.4%`）**<br>128K 纯 D：**`3,894.5`（`47.19 ms/步`）** | **P50/P95 TPOT `8.885 / 9.404 ms`**，PPL `2.0708`（`+0.078%`），最低空闲 **`1.949 GiB`** |
+| **11. 横向对标 LocalMaxxing 8×96GB 榜单**<br>[`11-localmaxxing-横向对标实测报告.md`](bench/reports/11-localmaxxing-横向对标实测报告.md)<br>[`localmaxxing-matrix-tf500.html`](bench/reports/localmaxxing-matrix-tf500.html)<br>[`localmaxxing-plan-c.json`](bench/reports/data/localmaxxing-plan-c.json) | 对标 `8× PRO 6000 96GB`（`768GB` · `vLLM 0.32`）全 `8K→1M` 64 项矩阵 | `8K–1M`：`9.27K–11.29K` | `8K–1019K`：**`25.0K–26.4K`**（高出单流上限 **`+66%`**） | 独立 8K：**`5,120` (`+78.8%`)**<br>独立 32K：**`4,903` (`+88.7%`)**<br>独立 128K：**`4,557` (`+89.5%`)** | 少 `99GB` 显存反超 `8K–128K@64` 平均 **`+80.2%`**，并零 OOM 跑通对方爆池的 **`512K×64`** 与 **`1019K×32`** |
+
+![TF500 vs LocalMaxxing Speed Test Matrix](bench/reports/localmaxxing-matrix-tf500.png)
 
 ---
 
