@@ -166,6 +166,35 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 ---
 
-## 七、许可证
+## 七、后续二期开发计划（`Stage 1 → Stage 4` 定版路线图）
+
+在一期 Step 1–5 完成落盘的基础上，结合 [`sd-popt5-analysis.json`](bench/reports/data/sd-popt5-analysis.json) 的 8-Rank 硬件 Profiler 剩余热点与 `tf500` 双路 Xeon 6737P（128 线程 + `597 GB/s` DDR5 + 单卡 `56.5 GB/s` PCIe 5.0）硬件拓扑，制定二期四步递进提速计划（完整技术蓝图与门禁细则见 [`10-tp8-二期提速规划-stage1-4.md`](bench/reports/10-tp8-二期提速规划-stage1-4.md)）：
+
+### 1. **`Stage 1`：Decode CUDA Graph 图内 FP8 `dp_gather` 跨槽压缩 + 双路 NUMA 物理绑核**
+- **剩余瓶颈**：一期 `SGLANG_ENABLE_DP_GATHER_FP8=1` 仅覆盖变长 Prefill（`all_gatherv`）；64 并发 Decode 图内的定长 `_dp_gather` 仍在跨双路 CPU UPI 总线跑 BF16 `AllGather`（每 5 步耗时 `34.02 ms`，叠加 `ReduceScatter` 共占单步总耗时 **`27.2%`**），且 8 个进程尚未锁死物理核亲和性。
+- **实施方案**：① 在 `deploy/prefill-opt` 中为 Decode 图预分配固定虚拟地址持久缓冲，将每 token `[5120B FP8 + 160B FP32 group-128 scale]` 打包为连续 `5280B` 单张量执行 **单次 `tp_group.all_gather` + Triton 融合解包反量化**（跨 UPI 流量减少 **`48.4%`**，捕获期零动态分配）；② 按拓扑将 `TP Rank 0–3`（`GPU 0–3`）严格绑至 `NUMA 0` 物理核、`TP Rank 4–7`（`GPU 4–7`）绑至 `NUMA 1` 物理核，并将 HTTP / 分词 / 流式工具解析隔离至预留核组。
+- **目标收益**：64 路 Decode **`+5% ~ +8%`**（`64×32K` 冲击 **`5,150–5,250 tok/s`**），P95 TPOT 毛刺进一步收敛；独立开关 `XTIER_DECODE_DP_GATHER_FP8=1`、`XTIER_NUMA_PIN=1`。
+
+### 2. **`Stage 2`：融合 `mHC`（超连接残差混合）算子链（替换旧 SM80 BF16 核）**
+- **剩余瓶颈**：32K 冷 Prefill Trace 中，`mhc_pre`（仍调用旧版 SM80 `s16816gemm` BF16 核，`211.16 ms`）+ `_hc_mix_stats_partial`（`115.08 ms`）+ `mhc_post_tilelang`（`88.04 ms`）+ `_hc_combine_norm`（`54.49 ms`）四项合计耗时 **`468.77 ms`（占整段 Prefill `~24%`，第二大耗时模块）**，因 `[M, 20480]` 高维残差流反复往返显存（`M=49152` 单次往返达 `4.03 GB`）。
+- **实施方案**：编写 SM120 原生无损融合算子（`src/xtier_86kd/packs/deepseek_v4/fused_mhc.py`），前段合并统计量归约与 `mhc_pre` 投影，后段将 `mhc_post` 加权合并与下层入口 RMSNorm 融合为单遍显存读写（100% 数学等价，与 MoE 走 TP8 或 EP8 完全正交）。
+- **目标收益**：冷 Prefill **`+7% ~ +11%`**（`64×128K` 冲击 **`28,500–29,300 tok/s`**），Decode **`+2% ~ +3%`**；独立开关 `XTIER_86KD_FUSED_MHC=1`。
+
+### 3. **`Stage 3`：CPU 128 核异步提前执行 `Engram` 哈希、DDR5 本地聚集与双缓冲 PCIe 5.0 预取**
+- **剩余瓶颈**：第 1 层与第 14 层共 `189.13 GiB` 的 FP8 `Engram` 表驻留主机内存，现有路径在 GPU 执行到层内时触发跨槽同步读取（Decode 每 5 步 `ncclSendRecv` 占 `9.32 ms`），而双路 Xeon 128 线程与 `597 GB/s` DDR5 带宽在 GPU 计算前置层时处于闲置。
+- **实施方案**：复用 `Stage 1` 绑核线程池与 `csrc/` C++/OpenMP 扩展，在调度器确定本步 `input_ids`（第 0 层启动前）即由本地 NUMA CPU 并行完成 24 列 N-gram 哈希、DDR5 行聚集与原地 BF16 反量化（64 路 Decode 每步仅 `2.43 MB`，耗时 `< 15 us`），经独立 `copy_stream` 走 PCIe 5.0（`56.5 GB/s`）写入固定地址 Ping-Pong 双缓冲，第 1/14 层在 CUDA Graph 内仅做 `wait_event` 零等待消费。
+- **目标收益**：Decode **`+3% ~ +5%`**，冷 Prefill **`+2% ~ +4%`**；独立开关 `XTIER_CPU_ENGRAM_PREFETCH=1`。
+
+### 4. **`Stage 4`：MoE `EP8`（专家并行）+ 共享专家本地双流重叠（带 15 分钟微基准硬门禁）**
+- **架构潜力与风险**：路由专家切 `EP8`（每卡完整持有 `48` 个全宽专家，消除 `288 -> 384` 填充再省约 `1.8 GiB/卡` 显存）并将仅 `0.94 GiB` 的共享专家留在 DP 本地副流与 **FP8 `AllToAll`** 完全重叠，可省去一次全局同步屏障；但 `tf500` 无 NVSwitch，跨双路 UPI 的小包 `AllToAll` 存在尾延迟风险。
+- **硬门禁执行准则**：先跑 15 分钟 8 卡 CUDA Graph 微基准对比 `[EP8 FP8 AllToAll + 本地共享专家重叠]` vs `[Stage 1–3 最优 TP8]`——**仅当 `M_global=384` 端到端净胜 `>= 3.0%` 且 Prefill 不回退时才推进整模合入；否则立即熔断跳过并归档微基准数据**。
+- **目标收益**：若跨槽延迟压住，64 路 Decode 潜在 **`+8% ~ +15%`**。
+
+### 5. **冻结观察（暂不处理）：`Stage 5` — 主机内存 `HiCache` 二级 KV 缓存池**
+- **冻结原因**：利用闲置 `512–640 GiB` DDR5 构建二级 KV 池属于业务层多轮缓存扩容优化。由于 `DeepSeek-V4.1-Flash` 同时包含 **FP4 压缩主池 + FP8 SWA 滑动窗口池 + `--swa-prefix-tails 384` + `DecoderReplayTail` 有界重放**，双异构池在跨池驱逐、部分命中换入与引用计数回收交界处极易出现隐蔽一致性边界问题；故在 `Stage 1–4` 全部收敛后视最终情况再议，**默认严格不动**。（此外，鉴于 8 卡 GDDR7 带宽 `10.24 TB/s` 为双路 DDR5 `0.60 TB/s` 的 17 倍且 64 并发每步命中 `99.97%` 专家，CPU MoE 算力卸载方案已明确永久排除。）
+
+---
+
+## 八、许可证
 
 Apache-2.0，详见 [`LICENSE`](LICENSE)。
