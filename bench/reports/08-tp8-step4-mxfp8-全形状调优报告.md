@@ -2,7 +2,7 @@
 
 - **日期**：2026-11-17
 - **测试平台**：`tf500`（`8 × NVIDIA RTX PRO 6000D` SM120，Attention DP8 + TP8 + DSpark `block=5, draft=6` `compact`）
-- **前置里程碑**：`sd-popt4b-s123`（Step 1–3，GitHub `6bba7f40`）
+- **前置里程碑**：`sd-popt4b-s123`（Step 1–3，里程碑 #3）
 - **结构化原始证据**：[`step4-mxfp8-graph-sweep.json`](data/step4-mxfp8-graph-sweep.json)、[`sd-popt5-analysis.json`](data/sd-popt5-analysis.json)
 - **修改模块**：[`src/xtier_86kd/mxfp8_prefill.py`](../../src/xtier_86kd/mxfp8_prefill.py)、[`src/xtier_86kd/packs/deepseek_v4/__init__.py`](../../src/xtier_86kd/packs/deepseek_v4/__init__.py)、[`deploy/prefill-opt/prefill_opt_hook.py`](../../deploy/prefill-opt/prefill_opt_hook.py)、[`bench/sps_profile.py`](../../bench/sps_profile.py)
 

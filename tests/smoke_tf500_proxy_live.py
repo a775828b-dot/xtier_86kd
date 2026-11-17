@@ -1,13 +1,17 @@
 """One small inference through the deployed proxy; never print credentials or text."""
 
 import json
+import os
+import sys
 import time
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "deploy"))
+import tf500_host  # noqa: E402
 
-key = Path("/data/xtier-86kd-console/proxy-api-key").read_text().strip()
-base = "http://<TF500_IP>:8000/v1"
+key = Path(os.environ.get("TF500_PROXY_KEY_FILE", "/data/xtier-86kd-console/proxy-api-key")).read_text().strip()
+base = f"http://{tf500_host.resolve_host()}:8000/v1"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 headers = {"Authorization": "Bearer " + key}
 started = time.monotonic()

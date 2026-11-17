@@ -1,6 +1,7 @@
 """Read-only smoke check for the deployed four-page WebUI."""
 
 import json
+import re
 import time
 from urllib.request import urlopen
 
@@ -19,7 +20,7 @@ for path, html in pages.items():
     for route in ('href="/"', 'href="/benchmark"', 'href="/proxy"', 'href="/server"'):
         assert route in html, (path, route)
     assert html.count('aria-current="page"') == 1, path
-    assert "192.0.2.1" not in html and "/home/example" not in html, path
+    assert not re.search(r"\b192\.168\.\d+\.\d+\b", html) and "/home/" not in html, path
 assert "bench-form" not in pages["/"] and "new-key-value" not in pages["/"]
 assert "bench-form" in pages["/benchmark"] and "new-key-value" not in pages["/benchmark"]
 assert "new-key-value" in pages["/proxy"] and "bench-form" not in pages["/proxy"]

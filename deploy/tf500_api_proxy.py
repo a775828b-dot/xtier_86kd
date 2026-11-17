@@ -16,15 +16,16 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+import tf500_host
 import tf500_proxy_keys as keys
 
-HOST = "<TF500_IP>"
+HOST = tf500_host.resolve_host()
 PORT = 8000
-BACKEND_HOST = "<TF500_IP>"
+BACKEND_HOST = os.environ.get("TF500_BACKEND_HOST", "").strip() or HOST
 BACKEND_PORT = 30000
-ROOT = Path("/data/xtier-86kd-console")
-PROXY_KEY_FILE = ROOT / "proxy-api-key"
-BACKEND_KEY_FILE = Path("/data/sglang-api-key")
+ROOT = Path(os.environ.get("TF500_CONSOLE_ROOT", "/data/xtier-86kd-console"))
+PROXY_KEY_FILE = Path(os.environ.get("TF500_PROXY_KEY_FILE", str(ROOT / "proxy-api-key")))
+BACKEND_KEY_FILE = Path(os.environ.get("TF500_BACKEND_KEY_FILE", "/data/sglang-api-key"))
 ACCESS_LOG = ROOT / "proxy-access.jsonl"
 MAX_BODY = 64 * 1024 * 1024
 _MODEL_RE = re.compile(rb'"model"\s*:\s*"([^"\\]{1,120})"')
@@ -282,10 +283,10 @@ def make_handler():
     return Handler
 
 
-CARD = """
+CARD_TMPL = """
 <section class="xt-proxy"><div><small>API PROXY</small><h2>推理 API 代理</h2>
 <p>本机客户端使用此入口访问当前模型；支持独立 Key、有效期、请求额度和用量统计。</p><a href="/proxy">打开代理配置页 →</a></div>
-<div><code>http://<TF500_IP>:8000/v1</code><span id="xt-proxy-state">检测中</span></div></section>
+<div><code>http://__PROXY_HOST__:__PROXY_PORT__/v1</code><span id="xt-proxy-state">检测中</span></div></section>
 """
 CSS = """
 .xt-proxy{display:flex;justify-content:space-between;gap:20px;align-items:center;margin:18px 0 0;padding:20px 22px;border:1px solid #345578;border-radius:18px;background:#081225;color:#dcecff;font:14px/1.5 ui-sans-serif,system-ui,"Segoe UI","Microsoft YaHei",sans-serif}
@@ -298,8 +299,9 @@ JS = """
 
 
 def decorate(page):
+    card = CARD_TMPL.replace("__PROXY_HOST__", str(HOST)).replace("__PROXY_PORT__", str(PORT))
     return (page.replace("</style></head>", CSS + "</style></head>", 1)
-            .replace("</main><script>", CARD + "</main><script>", 1)
+            .replace("</main><script>", card + "</main><script>", 1)
             .replace("</body></html>", "<script>" + JS + "</script></body></html>", 1))
 
 

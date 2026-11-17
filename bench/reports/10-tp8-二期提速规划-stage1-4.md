@@ -1,7 +1,7 @@
 # 10. TF500 TP8 二期深度提速规划（Stage 1–4 实施方案与冻结边界说明）
 
 - **制定日期**：2026-11-17
-- **基线版本**：一期 Step 1–5 收官版（GitHub `aae15a0`，对应实测标签 `sd-popt6-dp8sps` / `sd-popt5-s1234`）
+- **基线版本**：一期 Step 1–5 收官版（一期终版，对应实测标签 `sd-popt6-dp8sps` / `sd-popt5-s1234`）
 - **定位依据**：[`sd-popt5-analysis.json`](data/sd-popt5-analysis.json)（8-Rank 硬件 Profiler 剩余热点）与 [`01-tf500-前置检查与测速.md`](01-tf500-前置检查与测速.md)（双路 Xeon 6737P / DDR5 / PCIe 5.0 实测带宽账本）
 - **工程铁律**：继续严守对 `/data/src/sglang-align` 与 `/data/xtier-env` **零侵入修改**；每完成一个 Stage 均须通过 `Smoke 3/3`、`3-seg PPL`（相对基线波动 `<= ±0.5%`）、全程 `min_free_gib >= 1.26 GiB` 与单元测试后独立推送 GitHub。
 

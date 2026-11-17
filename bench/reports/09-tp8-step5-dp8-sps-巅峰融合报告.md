@@ -2,7 +2,7 @@
 
 - **日期**：2026-11-17
 - **测试平台**：`tf500`（`8 × NVIDIA RTX PRO 6000D` SM120，Attention DP8 + TP8 + DSpark `block=5, draft=6` `compact`）
-- **前置里程碑**：`sd-popt5-s1234`（Step 1–4，GitHub `d248b46`）
+- **前置里程碑**：`sd-popt5-s1234`（Step 1–4，里程碑 #4）
 - **结构化原始证据**：[`86kd-sps-6000d-dp8.json`](../86kd-sps-6000d-dp8.json)、[`sd-popt6-analysis.json`](data/sd-popt6-analysis.json)
 - **修改/新增文件**：[`bench/86kd-sps-6000d-dp8.json`](../86kd-sps-6000d-dp8.json)、[`bench/sps_profile.py`](../sps_profile.py)
 

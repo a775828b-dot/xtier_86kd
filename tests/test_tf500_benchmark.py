@@ -203,7 +203,7 @@ class BenchmarkUnitTests(unittest.TestCase):
         # DP=8 capacity math: 8 ranks * 4.5M single_kv = 36M total KV -> 64 concurrency has 8 reqs/rank -> full 512K fits!
         dp8_cap = {
             "model": "DeepSeek-V4.1-Flash-1017",
-            "backend_host": "<TF500_IP>",
+            "backend_host": "127.0.0.1",
             "backend_port": 30000,
             "backend_label": "TP8 · 86KD",
             "context": 1048576,

@@ -167,7 +167,7 @@ BODY = r"""
         <button type="button" id="btn-refresh-cap" class="secondary">↻ 刷新</button>
       </div>
       <div class="cap-list">
-        <div class="cap-row"><span>代理入口</span><b><TF500_IP>:8000/v1</b></div>
+        <div class="cap-row"><span>代理入口</span><b>__PROXY_ENDPOINT__</b></div>
         <div class="cap-row"><span>当前后端</span><b id="cap-backend">检测中…</b></div>
         <div class="cap-row"><span>在线模型</span><b id="cap-model">—</b></div>
         <div class="cap-row"><span>模型最大上下文</span><b id="cap-ctx">—</b></div>
@@ -1321,14 +1321,14 @@ JS = r"""
 """
 
 
-def page_html() -> str:
+def page_html(proxy_endpoint: str = "127.0.0.1:8000/v1") -> str:
     return (
         "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
         "<title>API 测速 · TF500</title><style>"
         + CSS
         + "</style></head><body>"
-        + BODY
+        + BODY.replace("__PROXY_ENDPOINT__", proxy_endpoint)
         + "<script>"
         + JS
         + "</script></body></html>"

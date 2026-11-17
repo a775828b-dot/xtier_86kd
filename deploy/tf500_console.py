@@ -21,17 +21,18 @@ from xtier.console.__main__ import Jobs, make_handler
 import tf500_console_ui as ui
 import tf500_benchmark
 import tf500_api_proxy
+import tf500_host
 import tf500_proxy_admin
 import tf500_proxy_keys
 import tf500_nav
 import tf500_server_info
 
-HOST = "<TF500_IP>"
+HOST = tf500_host.resolve_host()
 PORT = 30000
 SERVICE = "sglang-ds41.service"
 MODEL_ID = "ds41-86kd"
-API_KEY_FILE = Path("/data/sglang-api-key")
-STATE_DIR = Path("/data/xtier-86kd-console")
+API_KEY_FILE = Path(os.environ.get("TF500_BACKEND_KEY_FILE", "/data/sglang-api-key"))
+STATE_DIR = Path(os.environ.get("TF500_CONSOLE_ROOT", "/data/xtier-86kd-console"))
 LOG_DIR = STATE_DIR / "logs"
 
 MODEL = {
@@ -353,8 +354,8 @@ class Tf500Console(core.Console):
         data["texts"] = {
             "subtitle": "tf500 · TP8 / DP8 · FP4 KV · MXMMA · DeepSeek V4.1 Flash 1017",
             "foot": "默认搭载 8h 双引擎深度加速与 DP8 实测 SPS 成本表（sd-popt6-dp8sps 实测通过，支持下拉一键回退历史基线）。模型由启动按钮手动加载。",
-            "confirm": "启动 {name}？\n会先停止正在运行的模型，加载可能需要较长时间。API 将监听 <TF500_IP>:{port}。",
-            "endpoint": "http://<TF500_IP>:{port}/v1 · {served}",
+            "confirm": f"启动 {{name}}？\n会先停止正在运行的模型，加载可能需要较长时间。API 将监听 {HOST}:{{port}}。",
+            "endpoint": f"http://{HOST}:{{port}}/v1 · {{served}}",
         }
         return data
 

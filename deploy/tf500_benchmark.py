@@ -32,14 +32,15 @@ import urllib.request
 from pathlib import Path
 
 import tf500_benchmark_ui
+import tf500_host
 
-HOST = "<TF500_IP>"
+HOST = tf500_host.resolve_host()
 PORT = 8000
 BACKEND_PORT = 30000
 BACKEND_PORTS = (30000,)
 MODEL = "DeepSeek-V4.1-Flash-1017"
-KEY_FILE = Path("/data/sglang-api-key")
-PROXY_KEY_FILE = Path("/data/xtier-86kd-console/proxy-api-key")
+KEY_FILE = Path(os.environ.get("TF500_BACKEND_KEY_FILE", "/data/sglang-api-key"))
+PROXY_KEY_FILE = Path(os.environ.get("TF500_PROXY_KEY_FILE", "/data/xtier-86kd-console/proxy-api-key"))
 TOKENIZER_FILE = Path("/data/models/DeepSeek-V4.1-Flash-1017/tokenizer.json")
 XTIER_ROOT = Path("/data/src/xtier")
 REPO_ROOT = Path("/data/src/xtier_86kd")
@@ -2168,7 +2169,7 @@ class Benchmark:
 
 
 def page_html() -> str:
-    return tf500_benchmark_ui.page_html()
+    return tf500_benchmark_ui.page_html(proxy_endpoint=f"{HOST}:{PORT}/v1")
 
 
 def _cli_main() -> None:

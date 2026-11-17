@@ -70,6 +70,14 @@ class TestTf500ConsoleBuild(unittest.TestCase):
         self.assertIn("repair-a2-reader", env["PYTHONPATH"])
         self.assertNotIn("MXMMA·双引擎加速", tc.tags(opts))
 
+    def test_dynamic_host_resolution(self):
+        import tf500_host
+
+        sample = "4: tailscale0    inet 100.64.12.34/32 scope global tailscale0\\n"
+        self.assertEqual(tf500_host._parse_tailscale_ip(sample), "100.64.12.34")
+        with patch.dict("os.environ", {"TF500_HOST": "10.0.0.9"}):
+            self.assertEqual(tf500_host.resolve_host(), "10.0.0.9")
+
 
 if __name__ == "__main__":
     unittest.main()
