@@ -69,7 +69,9 @@ MODEL = {
         {'key': 'graph', 'label': 'Decode CUDA 图批量', 'default': '64', 'choices': [['64', '64']]},
         {'key': 'memory', 'label': '静态显存比例', 'default': '0.85', 'choices': [['0.85', '0.85']]},
         {'key': 'chunk', 'label': 'Prefill 分块', 'default': '49152', 'choices': [['49152', '48K · 巅峰吞吐（推荐）'], ['40960', '40K · 高余量稳健'], ['32768', '32K · 历史基线']]},
-        {'key': 'interval', 'label': 'Prefill 中穿插 decode', 'default': '10', 'choices': [['10', '10 步']]},
+        {'key': 'interval', 'label': 'Prefill 中穿插 decode', 'default': '20', 'choices': [['20', '20 步 · Agent 均衡（推荐）'], ['10', '10 步 · 跑分基线'], ['30', '30 步 · Decode 优先']]},
+        {'key': 'protect_chunk', 'label': 'Decode 保护动态分块', 'default': '2048', 'choices': [['2048', '2K · 混合负载护航（推荐）'], ['1024', '1K · 极低抖动'], ['0', '关 · 纯跑分满块']]},
+        {'key': 'numa_pin', 'label': '双路 NUMA 物理绑核', 'default': 'on', 'choices': [['on', '开 · 按 GPU 拓扑绑核（推荐）'], ['off', '关']]},
         {'key': 'tails', 'label': 'SWA 前缀尾部预算', 'default': '384', 'choices': [['384', '384']]},
         {'key': 'kvpool', 'label': 'KV 逻辑总量（实测）', 'default': '113569792', 'choices': [['113569792', '113.57M · 启动时核实']]},
         {'key': 'align', 'label': 'DeepInfer 第一档对齐', 'default': 'on', 'choices': [['on', '开 · 开发验证（A1/A2/A3/A7）'], ['off', '关 · 开发基线（p0）']]},
@@ -127,6 +129,8 @@ def build(options, port):
             "SGLANG_ENABLE_DP_GATHER_FP8": "1",
             "XTIER_PREFILL_NCCL_SKIP_ZERO": "1",
             "XTIER_IDLE_SINGLE_CHUNK": "16384",
+            "XTIER_DECODE_PROTECT_CHUNK": str(options.get("protect_chunk", "2048")),
+            "XTIER_NUMA_PIN": "1" if options.get("numa_pin", "on") == "on" else "0",
             "XTIER_PREFILL_MOE_MXMMA": "e3m4",
             "XTIER_DRAFT_MOE_MXMMA": "e3m4",
             "XTIER_MOE_PAD_N": "128",
@@ -144,6 +148,8 @@ def build(options, port):
             py_path = "/data/src/sglang-align/python"
         popt_env = {
             "XTIER_PREFILL_OPT": "0",
+            "XTIER_DECODE_PROTECT_CHUNK": "0",
+            "XTIER_NUMA_PIN": "0",
             "SGLANG_ENABLE_DP_GATHER_FP8": "0",
             "XTIER_86KD_MXFP8_TABLE": "0",
             "XTIER_DS_WO_A_MAX_T": "16",
@@ -174,6 +180,10 @@ def tags(options):
            "变长验证" if is_compact else "固定验证"]
     if options.get("popt", "on") == "on":
         res.append("MXMMA·双引擎加速")
+        if int(options.get("protect_chunk", "0") or "0") > 0:
+            res.append(f"保护块{int(options.get('protect_chunk', '0'))}")
+        if options.get("numa_pin", "off") == "on":
+            res.append("NUMA绑核")
     if options.get("align") == "on":
         res.append("DI第一档·开发验证")
     return res

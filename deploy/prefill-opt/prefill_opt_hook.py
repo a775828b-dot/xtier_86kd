@@ -16,6 +16,7 @@ import os
 logger = logging.getLogger(__name__)
 _PAD_OVERRIDE: tuple[int | None, int | None] | None = None
 _LAST_GLOBAL_ACTIVE_RANKS: int = 8
+_LAST_GLOBAL_DECODE_RANKS: int = 0
 _IN_REPLAY_TAIL_DEPTH: int = 0
 
 
@@ -300,12 +301,181 @@ def install_onto_humming_utils(hu_mod) -> None:
     hu_mod._xtier_hu_patched = True
 
 
+def _parse_cpulist(spec: str) -> list[int]:
+    cpus: list[int] = []
+    for part in spec.strip().split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo_s, hi_s = part.split("-", 1)
+            cpus.extend(range(int(lo_s), int(hi_s) + 1))
+        else:
+            cpus.append(int(part))
+    return sorted(set(cpus))
+
+
+def _read_numa_node_cpus() -> dict[int, list[int]]:
+    nodes: dict[int, list[int]] = {}
+    base = "/sys/devices/system/node"
+    try:
+        for entry in sorted(os.listdir(base)):
+            if not entry.startswith("node") or not entry[4:].isdigit():
+                continue
+            nid = int(entry[4:])
+            cpulist_path = os.path.join(base, entry, "cpulist")
+            if os.path.isfile(cpulist_path):
+                with open(cpulist_path, "r", encoding="utf-8") as f:
+                    cpus = _parse_cpulist(f.read())
+                if cpus:
+                    nodes[nid] = cpus
+    except OSError:
+        pass
+    return nodes
+
+
+def compute_numa_cpu_set(
+    gpu_id: int,
+    gpus_per_node: int = 4,
+    reserve_phys_cores: int = 4,
+    numa_nodes_cpus: dict[int, list[int]] | None = None,
+) -> set[int]:
+    """Compute disjoint per-GPU physical core (+ HT sibling) CPU affinity on dual-socket Xeon."""
+    nodes = numa_nodes_cpus if numa_nodes_cpus is not None else _read_numa_node_cpus()
+    if not nodes:
+        return set()
+    node_ids = sorted(nodes.keys())
+    node_idx = (gpu_id // max(1, gpus_per_node)) % len(node_ids)
+    local_slot = gpu_id % max(1, gpus_per_node)
+    cpus = sorted(nodes[node_ids[node_idx]])
+    n = len(cpus)
+    if n < gpus_per_node:
+        return set(cpus)
+
+    # Detect split SMT layout (e.g. [0..31, 64..95] -> first half physical, second half HT)
+    half = n // 2
+    has_smt_halves = (n % 2 == 0) and (cpus[half] - cpus[half - 1] > 1)
+    if has_smt_halves:
+        phys = cpus[:half]
+        ht = cpus[half:]
+    else:
+        phys = cpus
+        ht = []
+
+    usable_phys = len(phys) - reserve_phys_cores if len(phys) >= gpus_per_node + reserve_phys_cores else len(phys)
+    per_gpu = max(1, usable_phys // gpus_per_node)
+    start = local_slot * per_gpu
+    end = min(usable_phys, start + per_gpu)
+    selected = set(phys[start:end])
+    if ht and len(ht) == len(phys):
+        selected.update(ht[start:end])
+    return selected
+
+
+def _apply_numa_pin_for_gpu(gpu_id: int) -> set[int]:
+    cpus = compute_numa_cpu_set(gpu_id)
+    if not cpus or not hasattr(os, "sched_setaffinity"):
+        return set()
+    try:
+        os.sched_setaffinity(0, cpus)
+        logger.info(
+            "[xtier-numa-pin] gpu_id=%d pid=%d pinned to %d CPUs (%s)",
+            gpu_id,
+            os.getpid(),
+            len(cpus),
+            ",".join(str(c) for c in sorted(cpus)),
+        )
+        return cpus
+    except OSError as exc:
+        logger.warning("[xtier-numa-pin] failed for gpu_id=%d: %s", gpu_id, exc)
+        return set()
+
+
+def install_onto_dp_attn_sync(dp_attn_mod) -> None:
+    """Track global decoding DP ranks from MLPSyncBatchInfo.all_gather at zero extra cost."""
+    decode_protect_chunk = int(os.environ.get("XTIER_DECODE_PROTECT_CHUNK", "0") or "0")
+    if decode_protect_chunk <= 0:
+        return
+    cls = getattr(dp_attn_mod, "MLPSyncBatchInfo", None)
+    if cls is None or getattr(cls, "_xtier_decode_track_patched", False):
+        return
+    import functools
+
+    def _update_from_tp0_info(self_info) -> None:
+        global _LAST_GLOBAL_DECODE_RANKS
+        tp0 = getattr(self_info, "tp0_info_cpu", None)
+        if tp0 is None or getattr(self_info, "any_health_check", False):
+            return
+        try:
+            # Column 0 = num_tokens, Column 3 = is_extend_in_batch (0 for decode/idle, 1 for prefill)
+            mask = (tp0[:, 0] > 0) & (tp0[:, 3] == 0)
+            _LAST_GLOBAL_DECODE_RANKS = int(mask.sum().item())
+        except Exception:
+            pass
+
+    orig_all_gather = cls.all_gather
+
+    @functools.wraps(orig_all_gather)
+    def _patched_all_gather(self_info, *args, **kwargs):
+        ret = orig_all_gather(self_info, *args, **kwargs)
+        _update_from_tp0_info(self_info)
+        return ret
+
+    cls.all_gather = _patched_all_gather
+
+    if hasattr(cls, "finalize_local"):
+        orig_fin = cls.finalize_local
+
+        @functools.wraps(orig_fin)
+        def _patched_fin(self_info, *args, **kwargs):
+            ret = orig_fin(self_info, *args, **kwargs)
+            _update_from_tp0_info(self_info)
+            return ret
+
+        cls.finalize_local = _patched_fin
+
+    cls._xtier_decode_track_patched = True
+
+
 def install_onto_scheduler(scheduler_mod) -> None:
     idle_single_chunk = int(os.environ.get("XTIER_IDLE_SINGLE_CHUNK", "0") or "0")
-    if idle_single_chunk <= 0:
-        return
+    decode_protect_chunk = int(os.environ.get("XTIER_DECODE_PROTECT_CHUNK", "0") or "0")
+    numa_pin = os.environ.get("XTIER_NUMA_PIN", "0") == "1"
+
     Scheduler = scheduler_mod.Scheduler
-    if getattr(Scheduler, "_xtier_idle_chunk_patched", False):
+
+    # S1b: Dual-socket NUMA physical core pinning per TP worker process
+    if numa_pin and not getattr(Scheduler, "_xtier_numa_pin_patched", False):
+        import functools
+
+        orig_init = Scheduler.__init__
+
+        @functools.wraps(orig_init)
+        def _patched_init(self_sched, *args, **kwargs):
+            ret = orig_init(self_sched, *args, **kwargs)
+            gpu_id = None
+            try:
+                get_device = getattr(scheduler_mod, "get_device", None)
+                if callable(get_device):
+                    gpu_id = int(get_device().gpu_id)
+            except Exception:
+                gpu_id = None
+            if gpu_id is None:
+                try:
+                    get_parallel = getattr(scheduler_mod, "get_parallel", None)
+                    if callable(get_parallel):
+                        gpu_id = int(get_parallel().tp_rank)
+                except Exception:
+                    gpu_id = None
+            if gpu_id is not None:
+                _apply_numa_pin_for_gpu(gpu_id)
+            return ret
+
+        Scheduler.__init__ = _patched_init
+        Scheduler._xtier_numa_pin_patched = True
+
+    # N3 + Step 3D: Decode-protected dynamic chunking & idle single-rank chunk boost
+    if (idle_single_chunk <= 0 and decode_protect_chunk <= 0) or getattr(Scheduler, "_xtier_idle_chunk_patched", False):
         return
 
     orig_get_adder = Scheduler.get_prefill_adder_class
@@ -317,7 +487,7 @@ def install_onto_scheduler(scheduler_mod) -> None:
         key = (adder_cls, has_chunked)
         sub = subcls_cache.get(key)
         if sub is None:
-            class _IdleBoostPrefillAdder(adder_cls):
+            class _AdaptivePrefillAdder(adder_cls):
                 def __init__(self_adder, *args, **kwargs):
                     args_l = list(args)
                     if len(args_l) >= 7:
@@ -325,17 +495,23 @@ def install_onto_scheduler(scheduler_mod) -> None:
                         max_prefill = args_l[5]
                         chunk_sz = args_l[6]
                         wq_len = kwargs.get("waiting_queue_len", 0)
-                        if (
-                            chunk_sz is not None
-                            and (running_batch is None or running_batch.is_empty())
-                            and has_chunked == 1
-                            and wq_len == 0
-                            and _LAST_GLOBAL_ACTIVE_RANKS == 1
-                        ):
-                            args_l[6] = min(max_prefill, max(chunk_sz, idle_single_chunk))
+                        local_decoding = running_batch is not None and not running_batch.is_empty()
+                        global_decoding = _LAST_GLOBAL_DECODE_RANKS > 0
+                        if chunk_sz is not None:
+                            if decode_protect_chunk > 0 and (local_decoding or global_decoding):
+                                args_l[6] = min(chunk_sz, decode_protect_chunk)
+                            elif (
+                                idle_single_chunk > 0
+                                and not local_decoding
+                                and not global_decoding
+                                and has_chunked == 1
+                                and wq_len == 0
+                                and _LAST_GLOBAL_ACTIVE_RANKS == 1
+                            ):
+                                args_l[6] = min(max_prefill, max(chunk_sz, idle_single_chunk))
                     super().__init__(*args_l, **kwargs)
 
-            sub = _IdleBoostPrefillAdder
+            sub = _AdaptivePrefillAdder
             subcls_cache[key] = sub
         return sub
 

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TF500 C 组（P0+P1）实测看板 · 8K 并发矩阵 &amp; dsh 真实任务 10 分钟压测</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --fg: #0f172a;
+    --muted: #64748b;
+    --bdr: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 24px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    line-height: 1.42;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1420px; margin: 0 auto; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--bdr);
+    border-radius: 18px;
+    padding: 22px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #0284c7;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 6px 0 6px;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin-bottom: 16px;
+  }
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .kpi {
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    padding: 15px 16px;
+    background: linear-gradient(180deg, #f8fbff 0%, #f1f7fe 100%);
+  }
+  .kpi.green {
+    border-color: #a7f3d0;
+    background: linear-gradient(180deg, #f4fdf8 0%, #ecfdf5 100%);
+  }
+  .kpi.purple {
+    border-color: #ddd6fe;
+    background: linear-gradient(180deg, #faf8ff 0%, #f5f3ff 100%);
+  }
+  .kpi-lbl { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .kpi-val {
+    font-size: 27px;
+    font-weight: 800;
+    margin: 4px 0 3px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .kpi.blue .kpi-val { color: #0369a1; }
+  .kpi.green .kpi-val { color: #047857; }
+  .kpi.purple .kpi-val { color: #6d28d9; }
+  .kpi-sub { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .sec-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+  .sec-title { font-size: 16px; font-weight: 800; color: #0f172a; }
+  .sec-note { font-size: 12px; color: var(--muted); }
+
+  /* 8K Matrix Table */
+  .matrix-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 8px;
+    margin: -4px -8px;
+  }
+  .matrix-grid th {
+    background: #eef2f7;
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+    color: #334155;
+  }
+  .matrix-grid th:first-child { text-align: left; padding-left: 14px; }
+  .ctx-cell {
+    background: #eef2f7;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 14px;
+    width: 155px;
+    color: #1e293b;
+    vertical-align: middle;
+  }
+  .ctx-sub {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .mcell {
+    border: 1px solid var(--bdr);
+    border-radius: 12px;
+    padding: 11px 13px;
+    vertical-align: top;
+    min-width: 165px;
+  }
+  .mcell.sky {
+    background: rgba(2, 132, 199, 0.06);
+    border-color: rgba(2, 132, 199, 0.30);
+  }
+  .mcell.sky-strong {
+    background: rgba(2, 132, 199, 0.12);
+    border-color: rgba(2, 132, 199, 0.48);
+  }
+  .mcell.green {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.34);
+  }
+  .mcell.green-strong {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.52);
+  }
+  .m-main {
+    font-size: 19px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+  }
+  .m-sub {
+    font-size: 11.5px;
+    color: #475569;
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill {
+    display: inline-block;
+    margin-top: 7px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.green { background: #059669; color: #fff; }
+  .pill.sky { background: #0284c7; color: #fff; }
+  .pill.purple { background: #7c3aed; color: #fff; }
+  .pill.amber { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  .pill.slate { background: #e2e8f0; color: #334155; }
+
+  /* DSH Real-Task 4-Column Comparison */
+  .dsh-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .dsh-card {
+    border: 1.5px solid var(--bdr);
+    border-radius: 15px;
+    padding: 16px 17px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .dsh-card.baseline {
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #f59e0b;
+  }
+  .dsh-card.c16 {
+    background: linear-gradient(180deg, #f0fdf7 0%, #dcfce7 100%);
+    border-color: #10b981;
+  }
+  .dsh-card.c32 {
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-color: #0ea5e9;
+  }
+  .dsh-card.c64 {
+    background: linear-gradient(180deg, #faf5ff 0%, #ede9fe 100%);
+    border-color: #8b5cf6;
+  }
+  .dsh-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .dsh-tier {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .dsh-hero {
+    font-size: 28px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    margin: 2px 0;
+  }
+  .dsh-card.baseline .dsh-hero { color: #b45309; }
+  .dsh-card.c16 .dsh-hero { color: #047857; }
+  .dsh-card.c32 .dsh-hero { color: #0369a1; }
+  .dsh-card.c64 .dsh-hero { color: #6d28d9; }
+  .dsh-hero-lbl {
+    font-size: 11.5px;
+    color: #475569;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .kv-list {
+    border-top: 1px dashed rgba(15, 23, 42, 0.14);
+    padding-top: 9px;
+    margin-top: 4px;
+    display: grid;
+    gap: 5px;
+  }
+  .kv-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .kv-k { color: #475569; }
+  .kv-v { font-weight: 800; color: #0f172a; }
+
+  /* Bottom Proof Strip */
+  .proof-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .pbox {
+    border: 1px solid var(--bdr);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #f8fafc;
+  }
+  .pbox-title { font-size: 12px; font-weight: 800; color: #334155; }
+  .pbox-val {
+    font-size: 17px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 4px 0 3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pbox-sub { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--muted);
+    padding: 2px 6px 0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header + 4 Hero KPIs -->
+  <div class="card">
+    <div class="eyebrow">Real-World Agent &amp; Serving Benchmark · DeepSeek-V4.1-Flash-1017 · 2026-11-20</div>
+    <h1>TF500（8× RTX PRO 6000D 84GB）C 组（P0+P1）· 8K 并发矩阵 &amp; dsh 真实任务 30 分钟压测</h1>
+    <div class="sub">
+      推理栈：SGLang + xtier_86kd (MXMMA e3m4 · FP4 主 KV 1.136 亿 · Attention DP8) +
+      <strong>P0 前缀粘滞 DP 路由</strong> + <strong>P1 解码保护块 2048 · Interval 20 · 双路 NUMA 物理绑核</strong>
+      &nbsp;|&nbsp; 真实客户端：官方 <code>@deepseek-ai/dsh@0.2.2-rc.5</code>（Node 24.22 · 独立代码仓库沙箱）
+    </div>
+    <div class="kpis">
+      <div class="kpi green">
+        <div class="kpi-lbl">16 并发真实 dsh 单路 Decode</div>
+        <div class="kpi-val">125.4 tok/s</div>
+        <div class="kpi-sub">P50 118.3 · P10 96.7 · P95 TPOT 11.0 ms · 较改造前 +109%</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi-lbl">dsh 真实多轮前缀缓存命中率</div>
+        <div class="kpi-val">97.5% → 95.2%</div>
+        <div class="kpi-sub">16 / 32 / 64 并发：97.48% · 96.77% · 95.16%（改造前 24.1%）</div>
+      </div>
+      <div class="kpi purple">
+        <div class="kpi-lbl">64 并发 dsh 10 分钟持续吞吐</div>
+        <div class="kpi-val">2,041 tok/s 输出</div>
+        <div class="kpi-sub">总处理 145.3K tok/s · 30 分钟共处理 2.40 亿 tok · 0 OOM</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-lbl">8K/512 短测 64 并发满载聚合</div>
+        <div class="kpi-val">3,573 / 4,802</div>
+        <div class="kpi-sub">窗口 / 流式和 tok/s · 冷 P 23,984 tok/s · 单步 45.6 ms</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Part 1: 8K / 512 Concurrency Matrix -->
+  <div class="card">
+    <div class="sec-head">
+      <div class="sec-title">Part 1 · C 组 8K 输入 / 512 输出 并发聚合矩阵（1 → 64 并发 · 两阶段独立上下文 · 经 :8000 粘滞代理）</div>
+      <div class="sec-note">125/125 = 100% 粘滞命中 · 0 过载回退 · 真实语料 sglang-corpus（accept_len ≈ 3.4–3.6）</div>
+    </div>
+    <table class="matrix-grid">
+      <thead>
+        <tr>
+          <th>测试阶段</th>
+          <th>1 req</th>
+          <th>4 reqs</th>
+          <th>8 reqs</th>
+          <th>16 reqs</th>
+          <th>32 reqs</th>
+          <th>64 reqs</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="ctx-cell">
+            8K 冷 Prefill
+            <span class="ctx-sub">Phase 1 · 独立前缀 0 缓存</span>
+          </td>
+          <td class="mcell sky">
+            <div class="m-main">7,708 tok/s</div>
+            <div class="m-sub">冷 TTFT P50: 1.07 s</div>
+            <span class="pill slate">1 DP 活跃</span>
+          </td>
+          <td class="mcell sky">
+            <div class="m-main">13,765 tok/s</div>
+            <div class="m-sub">冷 TTFT P50: 2.38 s</div>
+            <span class="pill sky">1.79× 扩展</span>
+          </td>
+          <td class="mcell sky">
+            <div class="m-main">17,904 tok/s</div>
+            <div class="m-sub">冷 TTFT P50: 3.65 s</div>
+            <span class="pill sky">2.32× · 8 卡齐开</span>
+          </td>
+          <td class="mcell sky-strong">
+            <div class="m-main">21,154 tok/s</div>
+            <div class="m-sub">冷 TTFT P50: 4.81 s</div>
+            <span class="pill sky">2.74× 扩展</span>
+          </td>
+          <td class="mcell sky-strong">
+            <div class="m-main">22,809 tok/s</div>
+            <div class="m-sub">冷 TTFT P50: 7.73 s</div>
+            <span class="pill sky">2.96× 扩展</span>
+          </td>
+          <td class="mcell sky-strong">
+            <div class="m-main">23,984 tok/s</div>
+            <div class="m-sub">冷 TTFT P50: 12.46 s</div>
+            <span class="pill purple">3.11× · 525K 冷吞吐</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="ctx-cell">
+            8K / 512 Decode
+            <span class="ctx-sub">Phase 2 · 缓存命中 96.65%</span>
+          </td>
+          <td class="mcell green">
+            <div class="m-main">178.2 tok/s</div>
+            <div class="m-sub">流式和 177.8 · TPOT 5.62ms</div>
+            <span class="pill slate">18.9ms/步 · acc 3.37</span>
+          </td>
+          <td class="mcell green">
+            <div class="m-main">621.1 tok/s</div>
+            <div class="m-sub">流式和 632.9 · TPOT 6.39ms</div>
+            <span class="pill green">22.4ms/步 · acc 3.56</span>
+          </td>
+          <td class="mcell green">
+            <div class="m-main">1,015.2 tok/s</div>
+            <div class="m-sub">流式和 1,229.6 · TPOT 6.42ms</div>
+            <span class="pill green">23.6ms/步 · acc 3.62</span>
+          </td>
+          <td class="mcell green-strong">
+            <div class="m-main">1,533.7 tok/s</div>
+            <div class="m-sub">流式和 1,852.6 · TPOT 8.87ms</div>
+            <span class="pill green">29.2ms/步 · acc 3.37</span>
+          </td>
+          <td class="mcell green-strong">
+            <div class="m-main">2,462.5 tok/s</div>
+            <div class="m-sub">流式和 3,098.4 · TPOT 10.41ms</div>
+            <span class="pill green">35.7ms/步 · acc 3.45</span>
+          </td>
+          <td class="mcell green-strong">
+            <div class="m-main">3,572.6 tok/s</div>
+            <div class="m-sub">流式和 4,801.8 · TPOT 13.35ms</div>
+            <span class="pill green">45.6ms/步 · acc 3.41</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Part 2: Real dsh 16/32/64 x 10min Matrix -->
+  <div class="card">
+    <div class="sec-head">
+      <div class="sec-title">Part 2 · 真实 @deepseek-ai/dsh 编程任务压测（16 / 32 / 64 会话 × 10 分钟 · 改造前后对照）</div>
+      <div class="sec-note">每路独立沙箱真实读码 / 审计 / 写单测 / 跑 unittest · 30 分钟共 5,262 次请求 · 82 任务 0 失败</div>
+    </div>
+    <div class="dsh-grid">
+
+      <!-- Before Baseline -->
+      <div class="dsh-card baseline">
+        <div>
+          <div class="dsh-top">
+            <span class="dsh-tier">改造前 · 16 并发</span>
+            <span class="pill amber">11-17 线上基线</span>
+          </div>
+          <div class="dsh-hero">52.9 ~ 63.3</div>
+          <div class="dsh-hero-lbl">单路 Decode tok/s（中位 / 均值）</div>
+          <div class="kv-list">
+            <div class="kv-row"><span class="kv-k">路由与调度</span><span class="kv-v">round_robin · 6144 · int=10</span></div>
+            <div class="kv-row"><span class="kv-k">前缀缓存命中率</span><span class="kv-v" style="color:#b45309">24.1%（97.6% 块零缓存）</span></div>
+            <div class="kv-row"><span class="kv-k">真实输入上下文</span><span class="kv-v">均值 ~85K（中位 110K）</span></div>
+            <div class="kv-row"><span class="kv-k">DSpark accept_len</span><span class="kv-v">3.4 ~ 3.6</span></div>
+            <div class="kv-row"><span class="kv-k">核心痛点</span><span class="kv-v">轮询打碎缓存 + 大块锁死 D</span></div>
+            <div class="kv-row"><span class="kv-k">10 分钟持续吞吐</span><span class="kv-v">被 4,355 万冷重算拖垮</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;"><span class="pill amber">对照组 · 优化前痛点还原</span></div>
+      </div>
+
+      <!-- C=16 -->
+      <div class="dsh-card c16">
+        <div>
+          <div class="dsh-top">
+            <span class="dsh-tier">C 组 · 16 并发 dsh</span>
+            <span class="pill green">10 分钟 · 0 失败</span>
+          </div>
+          <div class="dsh-hero">118.3 / 125.4</div>
+          <div class="dsh-hero-lbl">单路 Decode tok/s（P50 / 均值 · P10=96.7 · P90=167.4）</div>
+          <div class="kv-list">
+            <div class="kv-row"><span class="kv-k">前缀缓存命中率</span><span class="kv-v" style="color:#047857">97.48%（粘滞 1268/1303）</span></div>
+            <div class="kv-row"><span class="kv-k">10 分钟输出 / 总吞吐</span><span class="kv-v">1,187.8 / 115,125 tok/s</span></div>
+            <div class="kv-row"><span class="kv-k">TTFT P50 / P95</span><span class="kv-v">0.935 s / 4.306 s</span></div>
+            <div class="kv-row"><span class="kv-k">TPOT P50 / P95</span><span class="kv-v">8.46 ms / 10.99 ms</span></div>
+            <div class="kv-row"><span class="kv-k">上下文 P50 / P90 / Max</span><span class="kv-v">51.0K / 87.0K / 135.4K</span></div>
+            <div class="kv-row"><span class="kv-k">LLM 请求 / 完整任务</span><span class="kv-v">1,303 次 / 19 任务 · acc 4.41</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;"><span class="pill green">单路 Decode 较改造前 +109%（翻倍+）</span></div>
+      </div>
+
+      <!-- C=32 -->
+      <div class="dsh-card c32">
+        <div>
+          <div class="dsh-top">
+            <span class="dsh-tier">C 组 · 32 并发 dsh</span>
+            <span class="pill sky">10 分钟 · 0 失败</span>
+          </div>
+          <div class="dsh-hero">88.4 / 95.2</div>
+          <div class="dsh-hero-lbl">单路 Decode tok/s（P50 / 均值 · P10=71.6 · P90=135.7）</div>
+          <div class="kv-list">
+            <div class="kv-row"><span class="kv-k">前缀缓存命中率</span><span class="kv-v" style="color:#0369a1">96.77%（粘滞 1734/1798）</span></div>
+            <div class="kv-row"><span class="kv-k">10 分钟输出 / 总吞吐</span><span class="kv-v">1,707.7 / 138,996 tok/s</span></div>
+            <div class="kv-row"><span class="kv-k">TTFT P50 / P95</span><span class="kv-v">1.381 s / 8.180 s</span></div>
+            <div class="kv-row"><span class="kv-k">TPOT P50 / P95</span><span class="kv-v">11.32 ms / 15.16 ms</span></div>
+            <div class="kv-row"><span class="kv-k">上下文 P50 / P90 / Max</span><span class="kv-v">44.0K / 78.5K / 116.4K</span></div>
+            <div class="kv-row"><span class="kv-k">LLM 请求 / 完整任务</span><span class="kv-v">1,798 次 / 30 任务 · acc 4.33</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;"><span class="pill sky">双倍并发仍稳近 95 tok/s · P95 &lt; 15.2ms</span></div>
+      </div>
+
+      <!-- C=64 -->
+      <div class="dsh-card c64">
+        <div>
+          <div class="dsh-top">
+            <span class="dsh-tier">C 组 · 64 并发 dsh</span>
+            <span class="pill purple">10 分钟 · 0 失败</span>
+          </div>
+          <div class="dsh-hero">69.0 / 77.6</div>
+          <div class="dsh-hero-lbl">单路 Decode tok/s（P50 / 均值 · P10=55.8 · P90=115.1）</div>
+          <div class="kv-list">
+            <div class="kv-row"><span class="kv-k">前缀缓存命中率</span><span class="kv-v" style="color:#6d28d9">95.16%（粘滞 2052/2161）</span></div>
+            <div class="kv-row"><span class="kv-k">10 分钟输出 / 总吞吐</span><span class="kv-v">2,040.8 / 145,254 tok/s</span></div>
+            <div class="kv-row"><span class="kv-k">TTFT P50 / P95</span><span class="kv-v">2.345 s / 25.585 s</span></div>
+            <div class="kv-row"><span class="kv-k">TPOT P50 / P95</span><span class="kv-v">14.50 ms / 19.47 ms</span></div>
+            <div class="kv-row"><span class="kv-k">上下文 P50 / P90 / Max</span><span class="kv-v">38.6K / 64.9K / 119.3K</span></div>
+            <div class="kv-row"><span class="kv-k">LLM 请求 / 完整任务</span><span class="kv-v">2,161 次 / 33 任务 · acc 4.34</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;"><span class="pill purple">4 倍并发单路仍超改造前 16 并发 · 0 OOM</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom Hardware & Engineering Verification Strip -->
+  <div class="card" style="padding: 16px 22px; margin-bottom: 10px;">
+    <div class="proof-strip">
+      <div class="pbox">
+        <div class="pbox-title">P0 前缀粘滞 DP 路由</div>
+        <div class="pbox-val">94.0% 粘滞命中</div>
+        <div class="pbox-sub">累计 5,276 命中 / 16 过载回退 · DP 0–7 均匀分布</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-title">P1 N3 解码保护动态分块</div>
+        <div class="pbox-val">2,276 次 2048 块触发</div>
+        <div class="pbox-sub">16 / 32 / 64 并发分别触发 414 / 702 / 1,160 次</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-title">P1 S1b 双路 NUMA 物理绑核</div>
+        <div class="pbox-val">112 核独占 + 16 核隔离</div>
+        <div class="pbox-sub">GPU 0–3 绑 NUMA 0 · GPU 4–7 绑 NUMA 1 · dsh 零抢核</div>
+      </div>
+      <div class="pbox">
+        <div class="pbox-title">30 分钟持续稳定性与热余量</div>
+        <div class="pbox-val">2.40 亿 tok · 0 OOM</div>
+        <div class="pbox-sub">8 卡最低空闲 2,742 MiB · 最高 55°C · 均功耗 1.93 kW</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>机器：tf500（8× NVIDIA RTX PRO 6000D 84GB · 双路 Xeon 6737P · 1 TiB DDR5 · PCIe 5.0）</span>
+    <span>数据源：/tmp/c-group-8k512.json · /tmp/dsh-stress-16-32-64.json · proxy-access.jsonl（2026-11-20 实测归档）</span>
+  </div>
+
+</div>
+</body>
+</html>

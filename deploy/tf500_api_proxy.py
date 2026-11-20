@@ -1,6 +1,8 @@
 """Authenticated OpenAI API gateway for the local SGLang service.
 
 Only /v1/ is forwarded. Request bodies and response bodies are never logged.
+Supports prefix-sticky DP routing (TF500_PROXY_STICKY_DP=1) and metadata-only
+observability (cached_tokens, dp_rank, temperature, stream, ttft_s, decode_tps).
 """
 
 import http.client
@@ -16,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+import tf500_dp_router as dp_router
 import tf500_host
 import tf500_proxy_keys as keys
 
@@ -23,9 +26,9 @@ HOST = tf500_host.resolve_host()
 PORT = 8000
 BACKEND_HOST = os.environ.get("TF500_BACKEND_HOST", "").strip() or HOST
 BACKEND_PORT = 30000
-ROOT = Path(os.environ.get("TF500_CONSOLE_ROOT", "/data/xtier-86kd-console"))
-PROXY_KEY_FILE = Path(os.environ.get("TF500_PROXY_KEY_FILE", str(ROOT / "proxy-api-key")))
-BACKEND_KEY_FILE = Path(os.environ.get("TF500_BACKEND_KEY_FILE", "/data/sglang-api-key"))
+ROOT = Path("/data/xtier-86kd-console")
+PROXY_KEY_FILE = ROOT / "proxy-api-key"
+BACKEND_KEY_FILE = Path("/data/sglang-api-key")
 ACCESS_LOG = ROOT / "proxy-access.jsonl"
 MAX_BODY = 64 * 1024 * 1024
 _MODEL_RE = re.compile(rb'"model"\s*:\s*"([^"\\]{1,120})"')
@@ -35,6 +38,7 @@ REPLACED = HOP | {"host", "authorization", "x-api-key", "accept-encoding"}
 LOG_LOCK = threading.Lock()
 BACKEND_LOCK = threading.Lock()
 BACKEND_CACHE = {"at": 0.0, "host": None, "default_port": None, "value": None}
+DP_ROUTER = dp_router.PrefixStickyDPRouter()
 
 
 def _key(path):
@@ -100,15 +104,18 @@ def status():
             data = json.load(response)
         return {"proxy": "online", "backend": "online" if data.get("backend_online") else "offline",
                 "backend_port": data.get("backend_port"), "backend_label": data.get("backend_label"),
+                "dp_router": data.get("dp_router"),
                 "base_url": f"http://{HOST}:{PORT}/v1"}
     except (OSError, urllib.error.URLError, ValueError):
         return {"proxy": "offline", "backend": "unknown", "base_url": f"http://{HOST}:{PORT}/v1"}
 
 
-def _record(method, path, status_code, elapsed_s, bytes_out, key_id, model, tokens):
+def _record(method, path, status_code, elapsed_s, bytes_out, key_id, model, tokens, extra=None):
     item = {"time": int(time.time()), "method": method, "path": path,
             "status": status_code, "elapsed_s": round(elapsed_s, 3), "bytes_out": bytes_out,
             "key_id": key_id, "model": model, "input": tokens[0], "output": tokens[1]}
+    if isinstance(extra, dict):
+        item.update(extra)
     try:
         with LOG_LOCK:
             ACCESS_LOG.parent.mkdir(parents=True, exist_ok=True)
@@ -118,36 +125,92 @@ def _record(method, path, status_code, elapsed_s, bytes_out, key_id, model, toke
         pass
 
 
+def _has_token_delta(value):
+    choices = value.get("choices")
+    if isinstance(choices, list) and choices:
+        c0 = choices[0]
+        if isinstance(c0, dict):
+            delta = c0.get("delta")
+            if isinstance(delta, dict):
+                if (delta.get("content") or delta.get("reasoning_content")
+                        or delta.get("reasoning") or delta.get("tool_calls")):
+                    return True
+            if c0.get("text"):
+                return True
+    evt_type = value.get("type")
+    if isinstance(evt_type, str) and evt_type.endswith(".delta") and value.get("delta"):
+        return True
+    return False
+
+
 class UsageCapture:
-    def __init__(self, content_type):
+    def __init__(self, content_type, started=None):
         self.sse = "text/event-stream" in content_type
+        self.started = started
         self.buffer = b""
         self.tokens = (0, 0)
+        self.cached_tokens = 0
+        self.first_token_at = None
+        self.last_token_at = None
 
-    def _event(self, data):
+    def _extract_usage(self, usage):
+        try:
+            prompt_tok = int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0)
+            comp_tok = int(usage.get("completion_tokens") or usage.get("output_tokens") or 0)
+            self.tokens = (prompt_tok, comp_tok)
+        except (TypeError, ValueError):
+            pass
+        cached = 0
+        details = usage.get("prompt_tokens_details") or usage.get("input_tokens_details")
+        if isinstance(details, dict) and details.get("cached_tokens") is not None:
+            try:
+                cached = int(details.get("cached_tokens") or 0)
+            except (TypeError, ValueError):
+                cached = 0
+        elif usage.get("cached_tokens") is not None:
+            try:
+                cached = int(usage.get("cached_tokens") or 0)
+            except (TypeError, ValueError):
+                cached = 0
+        if cached >= 0:
+            self.cached_tokens = cached
+
+    def _event(self, data, now=None):
         try:
             value = json.loads(data)
         except ValueError:
             return
         if not isinstance(value, dict):
             return
+        if self.sse and now is not None and _has_token_delta(value):
+            if self.first_token_at is None:
+                self.first_token_at = now
+            self.last_token_at = now
         usage = value.get("usage")
         if isinstance(usage, dict) and usage:
-            try:
-                self.tokens = (int(usage.get("prompt_tokens") or 0),
-                               int(usage.get("completion_tokens") or 0))
-            except (TypeError, ValueError):
-                pass
+            self._extract_usage(usage)
 
-    def feed(self, chunk):
+    def feed(self, chunk, now=None):
         if self.sse:
+            ts = time.monotonic() if now is None else now
             self.buffer += chunk
             if len(self.buffer) > 2 * 1024 * 1024:
                 self.buffer = self.buffer[-1024 * 1024:]
             while b"\n" in self.buffer:
                 line, self.buffer = self.buffer.split(b"\n", 1)
-                if line.startswith(b"data: ") and b'"usage"' in line:
-                    self._event(line[6:])
+                line = line.rstrip(b"\r")
+                if not line.startswith(b"data: "):
+                    continue
+                payload = line[6:]
+                if payload == b"[DONE]" or not payload:
+                    continue
+                has_usage = b'"usage"' in payload
+                if self.first_token_at is None or has_usage:
+                    self._event(payload, now=ts)
+                elif ((b'"delta"' in payload or b'"text"' in payload)
+                        and b'"choices":[]' not in payload
+                        and b'"choices": []' not in payload):
+                    self.last_token_at = ts
         elif len(self.buffer) + len(chunk) <= 2 * 1024 * 1024:
             self.buffer += chunk
 
@@ -155,6 +218,24 @@ class UsageCapture:
         if not self.sse:
             self._event(self.buffer)
         return self.tokens
+
+    def metrics(self):
+        prompt_tok, comp_tok = self.result()
+        ttft_s = None
+        decode_tps = None
+        if self.sse and self.first_token_at is not None and self.started is not None:
+            ttft_val = self.first_token_at - self.started
+            if ttft_val >= 0:
+                ttft_s = round(ttft_val, 4)
+            if self.last_token_at is not None and comp_tok >= 2:
+                decode_s = self.last_token_at - self.first_token_at
+                if decode_s > 0.001:
+                    decode_tps = round((comp_tok - 1) / decode_s, 2)
+        return {
+            "cached_tokens": self.cached_tokens,
+            "ttft_s": ttft_s,
+            "decode_tps": decode_tps,
+        }
 
 
 def _extract_model(body):
@@ -170,9 +251,32 @@ def _extract_model(body):
     return match.group(1).decode("utf-8", "replace")[:120] if match else ""
 
 
+def _parse_request_meta(body, path):
+    """Parse JSON body once for model, observability metadata, and DP routing."""
+    if not body:
+        return None, "", None, False
+    payload = None
+    if path in dp_router.ROUTABLE_PATHS or len(body) <= 65536:
+        try:
+            parsed = json.loads(body)
+            if isinstance(parsed, dict):
+                payload = parsed
+        except ValueError:
+            payload = None
+    if payload is not None:
+        model = str(payload.get("model") or "")[:120]
+        raw_temp = payload.get("temperature")
+        temperature = None
+        if isinstance(raw_temp, (int, float)) and not isinstance(raw_temp, bool):
+            temperature = round(float(raw_temp), 4)
+        stream = bool(payload.get("stream", False))
+        return payload, model, temperature, stream
+    return None, _extract_model(body), None, False
+
+
 def make_handler():
     class Handler(BaseHTTPRequestHandler):
-        server_version = "XTier86KDProxy/1.0"
+        server_version = "XTier86KDProxy/1.1"
         protocol_version = "HTTP/1.0"
 
         def log_message(self, *_args):
@@ -204,8 +308,13 @@ def make_handler():
             parsed = urlsplit(self.path)
             if self.command == "GET" and parsed.path == "/health":
                 target = backend_target()
-                return self._json(200, {"proxy": "ok", "backend_online": target["online"],
-                                        "backend_port": target["port"], "backend_label": target["label"]})
+                return self._json(200, {
+                    "proxy": "ok",
+                    "backend_online": target["online"],
+                    "backend_port": target["port"],
+                    "backend_label": target["label"],
+                    "dp_router": DP_ROUTER.stats(),
+                })
             decoded_path = unquote(unquote(parsed.path))
             if (not decoded_path.startswith("/v1/") or
                     any(part in (".", "..") for part in decoded_path.split("/")) or
@@ -225,17 +334,31 @@ def make_handler():
             if length < 0 or length > MAX_BODY:
                 return self._json(413, {"error": "request body too large"})
             body = self.rfile.read(length) if length else None
-            model = _extract_model(body)
+            payload, model, temperature, stream = _parse_request_meta(body, decoded_path)
             backend = backend_target()
             headers = {name: value for name, value in self.headers.items()
                        if name.lower() not in REPLACED}
             headers.update({"Host": f"{backend['host']}:{backend['port']}",
                             "Authorization": "Bearer " + _key(BACKEND_KEY_FILE),
                             "Accept-Encoding": "identity"})
+            lease = DP_ROUTER.acquire(decoded_path, headers, payload, raw_len=len(body) if body else 0)
+            if lease.inject_headers and lease.rank is not None:
+                headers[dp_router.HEADER_DP_RANK] = str(lease.rank)
+                headers[dp_router.HEADER_OVERRIDE_DP_RANK] = str(lease.rank)
+
             started = time.monotonic()
             status_code = 502
             bytes_out = 0
             tokens = (0, 0)
+            obs = {
+                "cached_tokens": 0,
+                "dp_rank": lease.rank,
+                "dp_route": lease.reason,
+                "temperature": temperature,
+                "stream": stream,
+                "ttft_s": None,
+                "decode_tps": None,
+            }
             connection = http.client.HTTPConnection(backend["host"], backend["port"], timeout=30)
             target = parsed.path + ("?" + parsed.query if parsed.query else "")
             try:
@@ -246,10 +369,13 @@ def make_handler():
                 status_code = response.status
                 self.send_response(response.status, response.reason)
                 content_type = response.getheader("Content-Type", "")
-                capture = UsageCapture(content_type)
+                capture = UsageCapture(content_type, started=started)
                 for name, value in response.getheaders():
                     if name.lower() not in HOP:
                         self.send_header(name, value)
+                if lease.rank is not None:
+                    self.send_header("X-TF500-DP-Rank", str(lease.rank))
+                    self.send_header("X-TF500-DP-Route", lease.reason)
                 self.send_header("Connection", "close")
                 self.end_headers()
                 while True:
@@ -262,14 +388,16 @@ def make_handler():
                     if "text/event-stream" in content_type:
                         self.wfile.flush()
                 tokens = capture.result()
+                obs.update(capture.metrics())
             except (OSError, http.client.HTTPException):
                 if not self.wfile.closed and not self.headers_sent:
                     self._json(502, {"error": "inference backend unavailable"})
                 status_code = 502
             finally:
+                DP_ROUTER.release(lease, ok=(200 <= status_code < 300))
                 connection.close()
                 _record(self.command, parsed.path, status_code,
-                        time.monotonic() - started, bytes_out, entry["id"], model, tokens)
+                        time.monotonic() - started, bytes_out, entry["id"], model, tokens, extra=obs)
 
     # BaseHTTPRequestHandler does not expose this flag, so track whether response
     # headers have already been sent before an upstream stream fails.
@@ -313,7 +441,7 @@ class ProxyHTTPServer(ThreadingHTTPServer):
 def main():
     ensure_proxy_key()
     server = ProxyHTTPServer((HOST, PORT), make_handler())
-    print(f"XTier 86KD API proxy on http://{HOST}:{PORT}/v1", flush=True)
+    print(f"XTier 86KD API proxy on http://{HOST}:{PORT}/v1 (sticky_dp={DP_ROUTER.is_enabled()}, dp_size={DP_ROUTER.dp_size})", flush=True)
     server.serve_forever()
 
 
