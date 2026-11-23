@@ -1,0 +1,58 @@
+{
+  "concurrency": 8,
+  "total_prompt_tokens": 646552,
+  "total_cached_tokens": 0,
+  "wall_s": 18.7352,
+  "agg_cold_prefill_tps": 34510.09,
+  "p50_ttft_s": 18.7,
+  "rows": [
+    {
+      "i": 0,
+      "wall_s": 18.7177,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 1,
+      "wall_s": 18.7156,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 2,
+      "wall_s": 18.7005,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 3,
+      "wall_s": 18.7108,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 4,
+      "wall_s": 18.6985,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 5,
+      "wall_s": 18.6895,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 6,
+      "wall_s": 18.6704,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    },
+    {
+      "i": 7,
+      "wall_s": 15.9991,
+      "prompt_tokens": 80819,
+      "cached_tokens": 0
+    }
+  ]
+}

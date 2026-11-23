@@ -1,0 +1,27 @@
+{
+  "tag": "wave4-clean-lossless",
+  "rows": [
+    {
+      "corpus": "code",
+      "seg": 0,
+      "n": 4095,
+      "nll": 0.585101
+    },
+    {
+      "corpus": "code",
+      "seg": 1,
+      "n": 4095,
+      "nll": 0.550794
+    },
+    {
+      "corpus": "code",
+      "seg": 2,
+      "n": 4095,
+      "nll": 1.051932
+    }
+  ],
+  "mean_nll": 0.72928,
+  "ppl": 2.0736,
+  "ref_ppl": 2.0678,
+  "delta_pct": 0.2794
+}
